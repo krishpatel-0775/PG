@@ -37,4 +37,12 @@ public interface BedRepository extends JpaRepository<Bed, Long> {
      * @return Total count
      */
     long countByRoomPropertyIdAndStatus(Long propertyId, BedStatus status);
+
+    /**
+     * Counts all beds in a property.
+     *
+     * @param propertyId Property ID
+     * @return Total count
+     */
+    long countByRoomPropertyId(Long propertyId);
 }

@@ -103,6 +103,7 @@ export default function DashboardPage() {
           badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
           icon: Building2,
           features: [
+            { title: "Operations Overview", icon: Building2, desc: "Live occupancy, pending revenue, and ticket triage KPI metrics.", href: "/dashboard/overview" },
             { title: "Manage Properties", icon: Home, desc: "Add or edit PG branches and room capacities.", href: "/dashboard/properties" },
             { title: "Tenant Directory", icon: Users, desc: "Review occupancy status and registered tenants.", href: "/dashboard/allocations" },
             { title: "Billing & Invoices", icon: FileText, desc: "Track rent cycles, deposits, and payments.", href: "/dashboard/finance" },

@@ -27,5 +27,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     List<Invoice> findByAllocationBedRoomPropertyOwnerIdAndStatusIn(Long ownerId, List<InvoiceStatus> statuses);
 
+    List<Invoice> findByAllocationBedRoomPropertyIdAndStatusIn(Long propertyId, List<InvoiceStatus> statuses);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(i.totalAmount - i.amountPaid), 0) FROM Invoice i " +
+           "WHERE i.allocation.bed.room.property.id = :propertyId " +
+           "AND i.status IN :statuses")
+    java.math.BigDecimal sumOutstandingDuesByPropertyIdAndStatusIn(
+            @org.springframework.data.repository.query.Param("propertyId") Long propertyId,
+            @org.springframework.data.repository.query.Param("statuses") List<InvoiceStatus> statuses);
+
     boolean existsByAllocationIdAndInvoiceMonth(Long allocationId, String invoiceMonth);
 }
