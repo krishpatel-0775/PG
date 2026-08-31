@@ -66,6 +66,7 @@ export default function DashboardPage() {
             { title: "Manage Properties", icon: Home, desc: "Add or edit PG branches and room capacities.", href: "/dashboard/properties" },
             { title: "Tenant Directory", icon: Users, desc: "Review occupancy status and registered tenants.", href: "/dashboard/allocations" },
             { title: "Billing & Invoices", icon: FileText, desc: "Track rent cycles, deposits, and payments.", href: "/dashboard/finance" },
+            { title: "Maintenance Tickets", icon: Wrench, desc: "Review and resolve tenant maintenance requests.", href: "/dashboard/admin-complaints" },
           ],
         };
       case "ROLE_STAFF":
@@ -75,7 +76,7 @@ export default function DashboardPage() {
           badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
           icon: Wrench,
           features: [
-            { title: "Maintenance Requests", icon: Wrench, desc: "Review and resolve active tenant tickets." },
+            { title: "Maintenance Requests", icon: Wrench, desc: "Review and resolve active tenant tickets.", href: "/dashboard/admin-complaints" },
             { title: "Housekeeping", icon: Clock, desc: "Check daily cleaning and supply checklists." },
             { title: "Access Control", icon: KeyRound, desc: "Manage visitor logs and facility entry." },
           ],
@@ -90,7 +91,7 @@ export default function DashboardPage() {
           features: [
             { title: "My Room & Bed", icon: Home, desc: "View your current allocation and amenities.", href: "/dashboard/my-room" },
             { title: "Rent & Payments", icon: FileText, desc: "Check upcoming dues and download receipts.", href: "/dashboard/my-dues" },
-            { title: "Raise a Complaint", icon: Wrench, desc: "Submit tickets for maintenance or service." },
+            { title: "Raise a Complaint", icon: Wrench, desc: "Submit tickets for maintenance or service.", href: "/dashboard/my-complaints" },
           ],
         };
     }
