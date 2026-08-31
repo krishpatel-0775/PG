@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Cookies from "js-cookie";
+import api from "@/lib/api";
 import {
   LogOut,
   Building2,
@@ -17,6 +18,11 @@ import {
   Wrench,
   KeyRound,
   FileText,
+  Megaphone,
+  Calendar,
+  User,
+  Loader2,
+  ChevronRight,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -26,7 +32,11 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
-  // Route protection
+  // Announcements Widget State
+  const [notices, setNotices] = useState([]);
+  const [loadingNotices, setLoadingNotices] = useState(true);
+
+  // Route protection & Data Loading
   useEffect(() => {
     const token = Cookies.get("token");
     if (!token) {
@@ -39,17 +49,47 @@ export default function DashboardPage() {
       setUserName(name);
       setUserEmail(email);
       setIsAuthenticated(true);
+
+      fetchRecentNotices(role);
     }
   }, [router]);
 
+  const fetchRecentNotices = async (role) => {
+    setLoadingNotices(true);
+    try {
+      if (role === "ROLE_TENANT") {
+        // Find resident's active allocation property ID
+        const allocationRes = await api.get("/allocations/my");
+        if (allocationRes.data && allocationRes.data.propertyId) {
+          const noticeRes = await api.get(`/notices/property/${allocationRes.data.propertyId}`);
+          setNotices((noticeRes.data || []).slice(0, 3));
+        } else {
+          setNotices([]);
+        }
+      } else {
+        // For Owners/Staff: fetch first property's notices
+        const propRes = await api.get("/properties");
+        if (propRes.data && propRes.data.length > 0) {
+          const firstPropId = propRes.data[0].id;
+          const noticeRes = await api.get(`/notices/property/${firstPropId}`);
+          setNotices((noticeRes.data || []).slice(0, 3));
+        } else {
+          setNotices([]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load recent announcements", err);
+      setNotices([]);
+    } finally {
+      setLoadingNotices(false);
+    }
+  };
+
   const handleLogout = () => {
-    // Clear auth cookies
     Cookies.remove("token");
     Cookies.remove("role");
     Cookies.remove("user_name");
     Cookies.remove("user_email");
-
-    // Redirect to login page
     router.replace("/login");
   };
 
@@ -59,7 +99,7 @@ export default function DashboardPage() {
       case "ROLE_PG_OWNER":
         return {
           label: "PG Owner",
-          description: "Full property, room allocation, and billing management access",
+          description: "Full property, room allocation, billing, and notice broadcast access",
           badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/30",
           icon: Building2,
           features: [
@@ -67,6 +107,7 @@ export default function DashboardPage() {
             { title: "Tenant Directory", icon: Users, desc: "Review occupancy status and registered tenants.", href: "/dashboard/allocations" },
             { title: "Billing & Invoices", icon: FileText, desc: "Track rent cycles, deposits, and payments.", href: "/dashboard/finance" },
             { title: "Maintenance Tickets", icon: Wrench, desc: "Review and resolve tenant maintenance requests.", href: "/dashboard/admin-complaints" },
+            { title: "Notice Board", icon: Megaphone, desc: "Broadcast announcements and alerts to residents.", href: "/dashboard/announcements" },
           ],
         };
       case "ROLE_STAFF":
@@ -183,6 +224,67 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Recent Announcements Widget (Tenant & Owner Bulletin) */}
+        <section className="bg-slate-900/50 border border-slate-800/90 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                <Megaphone className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Recent Announcements</h2>
+                <p className="text-xs text-slate-400">Latest building updates and notices from management</p>
+              </div>
+            </div>
+
+            {userRole === "ROLE_PG_OWNER" && (
+              <Link
+                href="/dashboard/announcements"
+                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+              >
+                Manage Board <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            )}
+          </div>
+
+          {loadingNotices ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+              <p className="text-xs text-slate-400">Loading notices...</p>
+            </div>
+          ) : notices.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-400 bg-slate-950/40 rounded-xl border border-slate-800/60">
+              <Megaphone className="w-6 h-6 text-slate-600 mx-auto mb-2" />
+              No recent announcements.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {notices.map((n) => (
+                <div
+                  key={n.id}
+                  className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-2 hover:border-slate-700 transition-all flex flex-col justify-between"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-indigo-400" />
+                        {new Date(n.createdAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                      </span>
+                      <span className="font-medium text-slate-400">{n.createdBy}</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-white line-clamp-1">
+                      {n.title}
+                    </h3>
+                    <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                      {n.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Feature Cards Grid */}
