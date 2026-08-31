@@ -65,7 +65,7 @@ export default function DashboardPage() {
           features: [
             { title: "Manage Properties", icon: Home, desc: "Add or edit PG branches and room capacities.", href: "/dashboard/properties" },
             { title: "Tenant Directory", icon: Users, desc: "Review occupancy status and registered tenants.", href: "/dashboard/allocations" },
-            { title: "Billing & Invoices", icon: FileText, desc: "Track rent cycles, deposits, and payments." },
+            { title: "Billing & Invoices", icon: FileText, desc: "Track rent cycles, deposits, and payments.", href: "/dashboard/finance" },
           ],
         };
       case "ROLE_STAFF":
@@ -89,7 +89,7 @@ export default function DashboardPage() {
           icon: UserCheck,
           features: [
             { title: "My Room & Bed", icon: Home, desc: "View your current allocation and amenities.", href: "/dashboard/my-room" },
-            { title: "Rent & Payments", icon: FileText, desc: "Check upcoming dues and download receipts." },
+            { title: "Rent & Payments", icon: FileText, desc: "Check upcoming dues and download receipts.", href: "/dashboard/my-dues" },
             { title: "Raise a Complaint", icon: Wrench, desc: "Submit tickets for maintenance or service." },
           ],
         };
