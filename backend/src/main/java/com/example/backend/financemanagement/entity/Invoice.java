@@ -2,7 +2,6 @@ package com.example.backend.financemanagement.entity;
 
 import com.example.backend.tenantmanagement.entity.Allocation;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -12,11 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity representing a monthly billing invoice generated for a tenant's bed allocation.
+ * Entity representing a billing invoice generated for a tenant's bed allocation on anniversary billing dates.
  */
 @Entity
 @Table(name = "invoices", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"allocation_id", "invoice_month"})
+    @UniqueConstraint(name = "uk_invoice_allocation_date", columnNames = {"allocation_id", "invoice_date"})
 })
 @Data
 @NoArgsConstructor
@@ -35,9 +34,13 @@ public class Invoice {
     @JoinColumn(name = "allocation_id", nullable = false)
     private Allocation allocation;
 
-    @NotBlank
-    @Column(name = "invoice_month", nullable = false, length = 20)
-    private String invoiceMonth;
+    @NotNull
+    @Column(name = "invoice_date", nullable = false)
+    private LocalDate invoiceDate;
+
+    @NotNull
+    @Column(name = "due_date", nullable = false)
+    private LocalDate dueDate;
 
     @NotNull
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
@@ -49,14 +52,13 @@ public class Invoice {
     private BigDecimal amountPaid = BigDecimal.ZERO;
 
     @NotNull
-    @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate;
-
-    @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
     private InvoiceStatus status = InvoiceStatus.UNPAID;
+
+    @Column(name = "invoice_month", length = 20)
+    private String invoiceMonth;
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default

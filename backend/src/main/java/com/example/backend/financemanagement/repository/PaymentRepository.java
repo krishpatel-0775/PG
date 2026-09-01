@@ -12,7 +12,13 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
+    /**
+     * Finds all payment transactions recorded for a given invoice ID.
+     */
     List<Payment> findByInvoiceId(Long invoiceId);
 
+    /**
+     * Finds all payments made by a specific tenant across all invoices.
+     */
     List<Payment> findByInvoiceAllocationTenantId(Long tenantId);
 }

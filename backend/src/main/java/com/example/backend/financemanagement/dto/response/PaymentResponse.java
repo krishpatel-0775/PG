@@ -24,18 +24,21 @@ public class PaymentResponse {
     private BigDecimal amount;
     private LocalDate paymentDate;
     private PaymentMode mode;
+    private String referenceId;
     private String transactionId;
     private String remarks;
 
     public static PaymentResponse fromEntity(Payment payment) {
         if (payment == null) return null;
+        String refId = payment.getReferenceId() != null ? payment.getReferenceId() : payment.getTransactionId();
         return PaymentResponse.builder()
                 .id(payment.getId())
                 .invoiceId(payment.getInvoice() != null ? payment.getInvoice().getId() : null)
                 .amount(payment.getAmount())
                 .paymentDate(payment.getPaymentDate())
                 .mode(payment.getMode())
-                .transactionId(payment.getTransactionId())
+                .referenceId(refId)
+                .transactionId(refId)
                 .remarks(payment.getRemarks())
                 .build();
     }

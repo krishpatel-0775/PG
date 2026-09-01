@@ -1,6 +1,7 @@
 package com.example.backend.financemanagement.controller;
 
 import com.example.backend.financemanagement.dto.request.CreatePaymentRequest;
+import com.example.backend.financemanagement.dto.request.RecordPaymentRequest;
 import com.example.backend.financemanagement.dto.response.InvoiceResponse;
 import com.example.backend.financemanagement.dto.response.PaymentResponse;
 import com.example.backend.financemanagement.service.FinanceService;
@@ -14,7 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * REST Controller providing billing, invoice generation, payment recording, and dues endpoints.
+ * REST Controller providing anniversary billing, invoice generation, payment recording,
+ * and tenant dues retrieval endpoints.
  */
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -28,13 +30,89 @@ public class FinanceController {
     }
 
     /**
-     * Triggers invoice generation manually for testing or on-demand billing cycles.
+     * Manual trigger for the daily billing cron job for testing and on-demand invoice generation.
+     */
+    @PostMapping("/invoices/trigger")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<List<InvoiceResponse>> triggerDailyInvoices() {
+        List<InvoiceResponse> generated = financeService.generateDailyInvoices();
+        return ResponseEntity.status(HttpStatus.CREATED).body(generated);
+    }
+
+    /**
+     * Manual generation endpoint (kept for UI compatibility).
      */
     @PostMapping("/invoices/generate-manual")
     @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
-    public ResponseEntity<List<InvoiceResponse>> generateMonthlyInvoicesManual() {
-        List<InvoiceResponse> generated = financeService.generateMonthlyInvoices();
+    public ResponseEntity<List<InvoiceResponse>> generateInvoicesManual() {
+        List<InvoiceResponse> generated = financeService.generateDailyInvoices();
         return ResponseEntity.status(HttpStatus.CREATED).body(generated);
+    }
+
+    /**
+     * Retrieves all pending (UNPAID and PARTIALLY_PAID) invoices across active tenants for the PG Owner.
+     */
+    @GetMapping("/invoices/pending")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<List<InvoiceResponse>> getPendingOwnerInvoices(Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        List<InvoiceResponse> pending = financeService.getPendingOwnerInvoices(userEmail, isSuperAdmin);
+        return ResponseEntity.ok(pending);
+    }
+
+    /**
+     * Alias endpoint for pending dues (kept for UI compatibility).
+     */
+    @GetMapping("/invoices/dues")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<List<InvoiceResponse>> getPendingDues(Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        List<InvoiceResponse> dues = financeService.getPendingOwnerInvoices(userEmail, isSuperAdmin);
+        return ResponseEntity.ok(dues);
+    }
+
+    /**
+     * Retrieves all invoices for the authenticated tenant.
+     */
+    @GetMapping("/invoices/my")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<List<InvoiceResponse>> getMyInvoices(Authentication authentication) {
+        String tenantEmail = authentication.getName();
+        List<InvoiceResponse> invoices = financeService.getMyInvoices(tenantEmail);
+        return ResponseEntity.ok(invoices);
+    }
+
+    /**
+     * Retrieves pending dues for the logged-in tenant (kept for UI compatibility).
+     */
+    @GetMapping("/my-dues")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<List<InvoiceResponse>> getMyDues(Authentication authentication) {
+        String tenantEmail = authentication.getName();
+        List<InvoiceResponse> dues = financeService.getMyDues(tenantEmail);
+        return ResponseEntity.ok(dues);
+    }
+
+    /**
+     * Records a manual payment (Cash, UPI, etc.) against an invoice by PG Owner or Super Admin.
+     */
+    @PostMapping("/payments/record")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<PaymentResponse> recordManualPayment(@Valid @RequestBody RecordPaymentRequest request) {
+        PaymentResponse response = financeService.recordManualPayment(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Simulates an online payment gateway integration for a tenant settling an invoice.
+     */
+    @PostMapping("/payments/mock-online/{invoiceId}")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<PaymentResponse> mockTenantOnlinePayment(@PathVariable Long invoiceId) {
+        PaymentResponse response = financeService.mockTenantOnlinePayment(invoiceId);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -49,29 +127,6 @@ public class FinanceController {
         boolean isSuperAdmin = isSuperAdmin(authentication);
         PaymentResponse response = financeService.recordPayment(request, userEmail, isSuperAdmin);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    /**
-     * Retrieves all pending/unpaid invoices across the owner's properties.
-     */
-    @GetMapping("/invoices/dues")
-    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
-    public ResponseEntity<List<InvoiceResponse>> getPendingDues(Authentication authentication) {
-        String userEmail = authentication.getName();
-        boolean isSuperAdmin = isSuperAdmin(authentication);
-        List<InvoiceResponse> dues = financeService.getPendingDues(userEmail, isSuperAdmin);
-        return ResponseEntity.ok(dues);
-    }
-
-    /**
-     * Retrieves pending dues for the logged-in tenant.
-     */
-    @GetMapping("/my-dues")
-    @PreAuthorize("hasRole('TENANT')")
-    public ResponseEntity<List<InvoiceResponse>> getMyDues(Authentication authentication) {
-        String tenantEmail = authentication.getName();
-        List<InvoiceResponse> dues = financeService.getMyDues(tenantEmail);
-        return ResponseEntity.ok(dues);
     }
 
     /**
@@ -102,6 +157,9 @@ public class FinanceController {
         return ResponseEntity.ok(invoice);
     }
 
+    /**
+     * Helper method to verify if user has ROLE_SUPER_ADMIN authority.
+     */
     private boolean isSuperAdmin(Authentication authentication) {
         if (authentication == null) return false;
         return authentication.getAuthorities().stream()

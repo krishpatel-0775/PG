@@ -22,6 +22,7 @@ import {
   ChevronDown,
   User,
   Bell,
+  BarChart3,
 } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
@@ -65,9 +66,12 @@ export default function DashboardLayout({ children }) {
   // Owner & Staff Navigation Links
   const ownerNavItems = [
     { name: "Overview", href: "/dashboard/overview", icon: LayoutDashboard },
+    { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+    { name: "Tenant Directory", href: "/dashboard/tenants", icon: Users },
     { name: "Properties & Beds", href: "/dashboard/properties", icon: Building },
     { name: "Allocations", href: "/dashboard/allocations", icon: Users },
-    { name: "Finance & Billing", href: "/dashboard/finance", icon: IndianRupee },
+    { name: "Rent & Invoices", href: "/dashboard/rent", icon: IndianRupee },
+    { name: "Finance & Billing", href: "/dashboard/finance", icon: FileText },
     { name: "Complaints", href: "/dashboard/admin-complaints", icon: Wrench },
     { name: "Notice Board", href: "/dashboard/announcements", icon: Megaphone },
   ];
@@ -76,7 +80,7 @@ export default function DashboardLayout({ children }) {
   const tenantNavItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "My Room & Bed", href: "/dashboard/my-room", icon: Home },
-    { name: "Rent & Invoices", href: "/dashboard/my-dues", icon: FileText },
+    { name: "My Rent & Bills", href: "/dashboard/my-rent", icon: IndianRupee },
     { name: "My Complaints", href: "/dashboard/my-complaints", icon: Wrench },
   ];
 

@@ -1,11 +1,13 @@
 package com.example.backend.financemanagement.service.impl;
 
 import com.example.backend.financemanagement.dto.request.CreatePaymentRequest;
+import com.example.backend.financemanagement.dto.request.RecordPaymentRequest;
 import com.example.backend.financemanagement.dto.response.InvoiceResponse;
 import com.example.backend.financemanagement.dto.response.PaymentResponse;
 import com.example.backend.financemanagement.entity.Invoice;
 import com.example.backend.financemanagement.entity.InvoiceStatus;
 import com.example.backend.financemanagement.entity.Payment;
+import com.example.backend.financemanagement.entity.PaymentMode;
 import com.example.backend.financemanagement.repository.InvoiceRepository;
 import com.example.backend.financemanagement.repository.PaymentRepository;
 import com.example.backend.financemanagement.service.FinanceService;
@@ -24,21 +26,22 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of {@link FinanceService} handling automatic monthly billing,
- * payment recording with overpayment guards, and pending dues retrieval.
+ * Implementation of {@link FinanceService} handling anniversary-date daily billing cycles,
+ * automated invoice generation, payment processing, and tenant dues tracking.
  */
 @Service
 @Transactional
 public class FinanceServiceImpl implements FinanceService {
 
     private static final Logger log = LoggerFactory.getLogger(FinanceServiceImpl.class);
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMM-yyyy");
 
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
@@ -56,44 +59,190 @@ public class FinanceServiceImpl implements FinanceService {
     }
 
     /**
-     * Runs automatically on the 1st of every month at midnight (00:00:00).
-     * Generates an invoice for each ACTIVE tenant allocation.
+     * Scheduled cron job running daily at 1:00 AM (0 0 1 * * ?).
+     * Evaluates all ACTIVE tenant allocations and generates an anniversary invoice if today is their billing day.
+     * Handles variable month lengths and leap years (e.g. 31st check-in billed on Feb 28th/29th or Apr 30th).
      */
     @Override
-    @Scheduled(cron = "0 0 0 1 * ?")
-    public List<InvoiceResponse> generateMonthlyInvoices() {
-        YearMonth currentMonth = YearMonth.now();
-        String invoiceMonth = currentMonth.format(DateTimeFormatter.ofPattern("MMM-yyyy"));
-        LocalDate dueDate = currentMonth.atDay(Math.min(5, currentMonth.lengthOfMonth()));
-
-        log.info("Starting automated monthly invoice generation for month: {}", invoiceMonth);
+    @Scheduled(cron = "0 0 1 * * ?")
+    @Transactional
+    public List<InvoiceResponse> generateDailyInvoices() {
+        LocalDate today = LocalDate.now();
+        log.info("Starting daily anniversary billing job for date: {}", today);
 
         List<Allocation> activeAllocations = allocationRepository.findByStatus(AllocationStatus.ACTIVE);
         List<Invoice> generatedInvoices = new ArrayList<>();
 
         for (Allocation allocation : activeAllocations) {
-            // Prevent duplicate invoicing for the same allocation and month
-            if (invoiceRepository.existsByAllocationIdAndInvoiceMonth(allocation.getId(), invoiceMonth)) {
-                log.debug("Invoice for allocation ID {} and month {} already exists. Skipping.", allocation.getId(), invoiceMonth);
+            LocalDate checkInDate = allocation.getCheckInDate();
+            if (checkInDate == null) {
+                log.warn("Active allocation ID {} has null check-in date. Skipping.", allocation.getId());
                 continue;
             }
 
-            Invoice invoice = Invoice.builder()
-                    .allocation(allocation)
-                    .invoiceMonth(invoiceMonth)
-                    .totalAmount(allocation.getMonthlyRent())
-                    .amountPaid(BigDecimal.ZERO)
-                    .dueDate(dueDate)
-                    .status(InvoiceStatus.UNPAID)
-                    .build();
+            // Do not bill before the allocation check-in date
+            if (today.isBefore(checkInDate)) {
+                log.debug("Allocation ID {} check-in date {} is in the future. Skipping.", allocation.getId(), checkInDate);
+                continue;
+            }
 
-            Invoice savedInvoice = invoiceRepository.save(invoice);
-            generatedInvoices.add(savedInvoice);
+            // Anniversary billing calculation
+            int checkInDay = checkInDate.getDayOfMonth();
+            int daysInCurrentMonth = today.lengthOfMonth();
+            int targetBillingDay = Math.min(checkInDay, daysInCurrentMonth);
+
+            if (today.getDayOfMonth() == targetBillingDay) {
+                // Check if invoice already exists for this allocation on today's billing date
+                if (!invoiceRepository.existsByAllocationIdAndInvoiceDate(allocation.getId(), today)) {
+                    Invoice invoice = Invoice.builder()
+                            .allocation(allocation)
+                            .invoiceDate(today)
+                            .dueDate(today.plusDays(5))
+                            .totalAmount(allocation.getMonthlyRent())
+                            .amountPaid(BigDecimal.ZERO)
+                            .status(InvoiceStatus.UNPAID)
+                            .invoiceMonth(today.format(MONTH_FORMATTER))
+                            .build();
+
+                    Invoice savedInvoice = invoiceRepository.save(invoice);
+                    generatedInvoices.add(savedInvoice);
+
+                    log.info("Generated anniversary invoice ID {} for allocation ID {} (Tenant: {}, Amount: ₹{})",
+                            savedInvoice.getId(),
+                            allocation.getId(),
+                            allocation.getTenant() != null ? allocation.getTenant().getEmail() : "N/A",
+                            allocation.getMonthlyRent());
+                } else {
+                    log.debug("Invoice already exists for allocation ID {} on date {}. Skipping duplicate generation.",
+                            allocation.getId(), today);
+                }
+            }
         }
 
-        log.info("Successfully generated {} invoices for month {}", generatedInvoices.size(), invoiceMonth);
+        log.info("Completed daily anniversary billing job for date {}. Total new invoices generated: {}",
+                today, generatedInvoices.size());
 
         return generatedInvoices.stream()
+                .map(InvoiceResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Records a manual payment (Cash, UPI, etc.) against an invoice.
+     * Updates the invoice's amountPaid and transitions its status (PAID / PARTIALLY_PAID).
+     */
+    @Override
+    @Transactional
+    public PaymentResponse recordManualPayment(RecordPaymentRequest request) {
+        Invoice invoice = invoiceRepository.findById(request.getInvoiceId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found with ID: " + request.getInvoiceId()));
+
+        // Create and save payment entity
+        Payment payment = Payment.builder()
+                .invoice(invoice)
+                .amount(request.getAmount())
+                .paymentDate(LocalDate.now())
+                .mode(request.getMode())
+                .referenceId(request.getReferenceId())
+                .transactionId(request.getReferenceId())
+                .build();
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // Update invoice's paid amount
+        BigDecimal currentPaid = invoice.getAmountPaid() != null ? invoice.getAmountPaid() : BigDecimal.ZERO;
+        BigDecimal totalAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal newAmountPaid = currentPaid.add(request.getAmount());
+
+        invoice.setAmountPaid(newAmountPaid);
+
+        // Update status based on total vs paid amount
+        if (newAmountPaid.compareTo(totalAmount) >= 0) {
+            invoice.setStatus(InvoiceStatus.PAID);
+        } else {
+            invoice.setStatus(InvoiceStatus.PARTIALLY_PAID);
+        }
+
+        invoiceRepository.save(invoice);
+
+        log.info("Recorded manual payment ID {} of ₹{} for Invoice ID {}. New status: {}",
+                savedPayment.getId(), request.getAmount(), invoice.getId(), invoice.getStatus());
+
+        return PaymentResponse.fromEntity(savedPayment);
+    }
+
+    /**
+     * Simulates an online tenant payment gateway settlement for a given invoice.
+     * Automatically clears the remaining due and sets invoice status to PAID.
+     */
+    @Override
+    @Transactional
+    public PaymentResponse mockTenantOnlinePayment(Long invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found with ID: " + invoiceId));
+
+        BigDecimal totalAmount = invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal currentPaid = invoice.getAmountPaid() != null ? invoice.getAmountPaid() : BigDecimal.ZERO;
+        BigDecimal remainingDue = totalAmount.subtract(currentPaid).max(BigDecimal.ZERO);
+        BigDecimal paymentAmount = remainingDue.compareTo(BigDecimal.ZERO) > 0 ? remainingDue : totalAmount;
+
+        String fakeTxnId = "MOCK_PAY_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+
+        Payment payment = Payment.builder()
+                .invoice(invoice)
+                .amount(paymentAmount)
+                .paymentDate(LocalDate.now())
+                .mode(PaymentMode.ONLINE)
+                .referenceId(fakeTxnId)
+                .transactionId(fakeTxnId)
+                .remarks("Simulated online gateway payment")
+                .build();
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // Fully settle the invoice
+        invoice.setAmountPaid(totalAmount);
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoiceRepository.save(invoice);
+
+        log.info("Processed mock online payment ID {} of ₹{} for Invoice ID {}. Invoice marked PAID.",
+                savedPayment.getId(), paymentAmount, invoice.getId());
+
+        return PaymentResponse.fromEntity(savedPayment);
+    }
+
+    /**
+     * Retrieves all pending (UNPAID and PARTIALLY_PAID) invoices for properties owned by the authenticated owner.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getPendingOwnerInvoices(String ownerEmail, boolean isSuperAdmin) {
+        User user = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + ownerEmail));
+
+        List<InvoiceStatus> pendingStatuses = List.of(InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID);
+
+        List<Invoice> invoices = isSuperAdmin
+                ? invoiceRepository.findByStatusIn(pendingStatuses)
+                : invoiceRepository.findByAllocationBedRoomPropertyOwnerIdAndStatusIn(user.getId(), pendingStatuses);
+
+        return invoices.stream()
+                .map(InvoiceResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves all invoices for the authenticated tenant across all allocations.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getMyInvoices(String tenantEmail) {
+        User tenant = userRepository.findByEmail(tenantEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenant account not found: " + tenantEmail));
+
+        List<Invoice> invoices = invoiceRepository.findByAllocationTenantId(tenant.getId());
+
+        return invoices.stream()
                 .map(InvoiceResponse::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -156,6 +305,7 @@ public class FinanceServiceImpl implements FinanceService {
                 .amount(request.getAmount())
                 .paymentDate(request.getPaymentDate() != null ? request.getPaymentDate() : LocalDate.now())
                 .mode(request.getMode())
+                .referenceId(request.getTransactionId())
                 .transactionId(request.getTransactionId())
                 .remarks(request.getRemarks())
                 .build();
@@ -171,18 +321,7 @@ public class FinanceServiceImpl implements FinanceService {
     @Override
     @Transactional(readOnly = true)
     public List<InvoiceResponse> getPendingDues(String userEmail, boolean isSuperAdmin) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userEmail));
-
-        List<InvoiceStatus> pendingStatuses = List.of(InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID);
-
-        List<Invoice> invoices = isSuperAdmin
-                ? invoiceRepository.findByStatusIn(pendingStatuses)
-                : invoiceRepository.findByAllocationBedRoomPropertyOwnerIdAndStatusIn(user.getId(), pendingStatuses);
-
-        return invoices.stream()
-                .map(InvoiceResponse::fromEntity)
-                .collect(Collectors.toList());
+        return getPendingOwnerInvoices(userEmail, isSuperAdmin);
     }
 
     /**
@@ -203,7 +342,7 @@ public class FinanceServiceImpl implements FinanceService {
     }
 
     /**
-     * Retrieves all pending dues for the logged-in tenant.
+     * Retrieves all pending dues for the authenticated tenant.
      */
     @Override
     @Transactional(readOnly = true)
@@ -244,5 +383,13 @@ public class FinanceServiceImpl implements FinanceService {
         }
 
         return InvoiceResponse.fromEntity(invoice);
+    }
+
+    /**
+     * Compatibility helper method for generating invoices on-demand.
+     */
+    @Override
+    public List<InvoiceResponse> generateMonthlyInvoices() {
+        return generateDailyInvoices();
     }
 }

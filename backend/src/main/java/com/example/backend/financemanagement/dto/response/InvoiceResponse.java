@@ -35,11 +35,12 @@ public class InvoiceResponse {
     private String roomNumber;
     private Long bedId;
     private String bedNumber;
+    private LocalDate invoiceDate;
+    private LocalDate dueDate;
     private String invoiceMonth;
     private BigDecimal totalAmount;
     private BigDecimal amountPaid;
     private BigDecimal dueAmount;
-    private LocalDate dueDate;
     private InvoiceStatus status;
     private List<PaymentResponse> payments;
 
@@ -74,11 +75,12 @@ public class InvoiceResponse {
                 .roomNumber(room != null ? room.getRoomNumber() : null)
                 .bedId(bed != null ? bed.getId() : null)
                 .bedNumber(bed != null ? bed.getBedNumber() : null)
+                .invoiceDate(invoice.getInvoiceDate())
+                .dueDate(invoice.getDueDate())
                 .invoiceMonth(invoice.getInvoiceMonth())
                 .totalAmount(invoice.getTotalAmount())
                 .amountPaid(invoice.getAmountPaid())
                 .dueAmount(due)
-                .dueDate(invoice.getDueDate())
                 .status(invoice.getStatus())
                 .payments(paymentList)
                 .build();

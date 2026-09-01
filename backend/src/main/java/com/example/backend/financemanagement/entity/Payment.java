@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Entity representing an individual payment receipt recorded against an invoice.
+ * Entity representing an individual payment transaction recorded against an invoice.
  */
 @Entity
 @Table(name = "payments")
@@ -42,9 +42,19 @@ public class Payment {
     @Column(nullable = false, length = 30)
     private PaymentMode mode;
 
+    @Column(name = "reference_id", length = 100)
+    private String referenceId;
+
     @Column(name = "transaction_id", length = 100)
     private String transactionId;
 
     @Column(length = 255)
     private String remarks;
+
+    /**
+     * Helper getter to ensure referenceId and transactionId are interoperable.
+     */
+    public String getEffectiveReferenceId() {
+        return referenceId != null ? referenceId : transactionId;
+    }
 }
