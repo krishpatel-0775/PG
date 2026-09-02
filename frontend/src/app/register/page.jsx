@@ -9,7 +9,6 @@ import {
   Mail,
   Lock,
   Phone,
-  ShieldCheck,
   Eye,
   EyeOff,
   UserPlus,
@@ -27,7 +26,6 @@ export default function RegisterPage() {
     email: "",
     password: "",
     phone: "",
-    role: "ROLE_TENANT",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +54,7 @@ export default function RegisterPage() {
         email: formData.email.trim(),
         password: formData.password,
         phone: formData.phone.trim(),
-        role: formData.role,
+        role: "ROLE_TENANT", // Hardcoded role for tenant sign-ups
       });
 
       // On successful registration, redirect to login
@@ -94,7 +92,7 @@ export default function RegisterPage() {
             Create an Account
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            Join the PG Management platform as a tenant, owner, or staff
+            Join the PG Management platform.
           </p>
         </div>
 
@@ -226,46 +224,11 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Role Dropdown */}
-            <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Role
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <ShieldCheck className="h-5 h-5" />
-                </div>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-950/60 border border-slate-800 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm appearance-none cursor-pointer"
-                >
-                  <option value="ROLE_TENANT" className="bg-slate-900 text-white">
-                    Tenant (Resident)
-                  </option>
-                  <option value="ROLE_PG_OWNER" className="bg-slate-900 text-white">
-                    PG Owner (Property Manager)
-                  </option>
-                  <option value="ROLE_STAFF" className="bg-slate-900 text-white">
-                    Staff (Maintenance & Support)
-                  </option>
-                </select>
-                <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400 text-xs">
-                  ▼
-                </div>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.99]"
+              className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.99] cursor-pointer"
             >
               {loading ? (
                 <>
@@ -281,8 +244,8 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* Redirect to Login */}
-          <div className="mt-6 pt-6 border-t border-slate-800/80 text-center">
+          {/* Links & Navigation Footer */}
+          <div className="mt-6 pt-6 border-t border-slate-800/80 text-center space-y-3">
             <p className="text-sm text-slate-400">
               Already have an account?{" "}
               <Link
@@ -290,6 +253,16 @@ export default function RegisterPage() {
                 className="font-medium text-indigo-400 hover:text-indigo-300 inline-flex items-center gap-1 transition-colors"
               >
                 Sign In <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </p>
+
+            <p className="text-xs text-slate-500">
+              Are you a PG Owner?{" "}
+              <Link
+                href="/partner-with-us"
+                className="font-semibold text-emerald-400 hover:text-emerald-300 underline transition-colors"
+              >
+                List Your PG Here
               </Link>
             </p>
           </div>

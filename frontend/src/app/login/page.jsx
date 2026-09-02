@@ -205,15 +205,24 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Redirect to Register */}
-          <div className="mt-6 pt-6 border-t border-slate-800/80 text-center">
+          {/* Redirect to Register & Partner With Us */}
+          <div className="mt-6 pt-6 border-t border-slate-800/80 text-center space-y-2">
             <p className="text-sm text-slate-400">
-              Don&apos;t have an account?{" "}
+              Are you a PG Owner?{" "}
+              <Link
+                href="/partner-with-us"
+                className="font-semibold text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 transition-colors"
+              >
+                List Your PG Here <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </p>
+            <p className="text-xs text-slate-500">
+              Tenant looking to sign up?{" "}
               <Link
                 href="/register"
-                className="font-medium text-indigo-400 hover:text-indigo-300 inline-flex items-center gap-1 transition-colors"
+                className="text-indigo-400 hover:text-indigo-300 transition-colors"
               >
-                Create an account <ArrowRight className="w-3.5 h-3.5" />
+                Standard Sign Up
               </Link>
             </p>
           </div>

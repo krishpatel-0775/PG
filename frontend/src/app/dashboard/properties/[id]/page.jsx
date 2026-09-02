@@ -20,8 +20,14 @@ import {
   XCircle,
   AlertTriangle,
   Users,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import BedActionModal from "@/components/BedActionModal";
+import EditPropertyModal from "@/components/EditPropertyModal";
+import EditRoomModal from "@/components/EditRoomModal";
+import EditBedModal from "@/components/EditBedModal";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 export default function PropertyDetailsPage() {
   const params = useParams();
@@ -34,10 +40,25 @@ export default function PropertyDetailsPage() {
   const [floorFilter, setFloorFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
-  // Modal State
+  // Existing Bed Action Modal (Allocation / Check-in / Checkout)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBed, setSelectedBed] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Edit Modals State
+  const [editPropertyOpen, setEditPropertyOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [editingBed, setEditingBed] = useState(null);
+
+  // Delete Confirmation State
+  const [deleteModalConfig, setDeleteModalConfig] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    itemDetails: "",
+    endpoint: "",
+    onSuccess: null,
+  });
 
   const handleBedClick = (bed, room) => {
     setSelectedBed(bed);
@@ -67,6 +88,102 @@ export default function PropertyDetailsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ===========================================================================
+  // Edit & Delete Event Handlers
+  // ===========================================================================
+
+  const handlePropertyUpdated = (updated) => {
+    setProperty((prev) => ({
+      ...prev,
+      ...updated,
+      rooms: prev?.rooms || updated.rooms || [],
+    }));
+  };
+
+  const handleRoomUpdated = (updatedRoom) => {
+    setProperty((prev) => ({
+      ...prev,
+      rooms: (prev.rooms || []).map((r) =>
+        r.id === updatedRoom.id ? { ...r, ...updatedRoom, beds: r.beds } : r
+      ),
+    }));
+  };
+
+  const handleBedUpdated = (updatedBed) => {
+    setProperty((prev) => ({
+      ...prev,
+      rooms: (prev.rooms || []).map((r) => ({
+        ...r,
+        beds: (r.beds || []).map((b) => (b.id === updatedBed.id ? { ...b, ...updatedBed } : b)),
+      })),
+    }));
+  };
+
+  const handleDeleteProperty = () => {
+    setDeleteModalConfig({
+      isOpen: true,
+      title: `Delete Property: ${property?.name}`,
+      message: "Are you sure? This action cannot be undone and permanently deletes this property.",
+      itemDetails:
+        "Note: Deletion will be rejected if any room has occupied or active beds.",
+      endpoint: `/properties/${propertyId}`,
+      onSuccess: () => {
+        router.push("/dashboard/properties");
+      },
+    });
+  };
+
+  const handleDeleteRoom = (room) => {
+    setDeleteModalConfig({
+      isOpen: true,
+      title: `Delete Room ${room.roomNumber}`,
+      message: "Are you sure? This action cannot be undone.",
+      itemDetails: "Note: All beds inside this room must be VACANT before deleting the room.",
+      endpoint: `/rooms/${room.id}`,
+      onSuccess: () => {
+        setProperty((prev) => ({
+          ...prev,
+          rooms: (prev.rooms || []).filter((r) => r.id !== room.id),
+          totalRooms: Math.max(0, (prev.totalRooms || 1) - 1),
+        }));
+      },
+    });
+  };
+
+  const handleDeleteBed = (bed, room) => {
+    setDeleteModalConfig({
+      isOpen: true,
+      title: `Delete Bed ${bed.bedNumber}`,
+      message: "Are you sure? This action cannot be undone.",
+      itemDetails:
+        bed.status === "OCCUPIED"
+          ? "⚠️ Notice: Bed is marked OCCUPIED. The server will reject deletion of occupied beds."
+          : "Bed status is VACANT. It will be permanently removed.",
+      endpoint: `/beds/${bed.id}`,
+      onSuccess: () => {
+        setProperty((prev) => ({
+          ...prev,
+          rooms: (prev.rooms || []).map((r) => {
+            if (r.id !== room.id) return r;
+            return {
+              ...r,
+              beds: (r.beds || []).filter((b) => b.id !== bed.id),
+            };
+          }),
+          totalBeds: Math.max(0, (prev.totalBeds || 1) - 1),
+          vacantBeds:
+            bed.status === "VACANT"
+              ? Math.max(0, (prev.vacantBeds || 1) - 1)
+              : prev.vacantBeds,
+          occupiedBeds:
+            bed.status === "OCCUPIED"
+              ? Math.max(0, (prev.occupiedBeds || 1) - 1)
+              : prev.occupiedBeds,
+        }));
+      },
+    });
   };
 
   // Helper for bed color-coding styling
@@ -170,15 +287,36 @@ export default function PropertyDetailsPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            <Link
-              href={`/dashboard/properties/${propertyId}/add-room`}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Add Room
-            </Link>
-          </div>
+          {/* Action Buttons for Property */}
+          {property && (
+            <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setEditPropertyOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-slate-600 transition-all shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5 text-indigo-400" />
+                Edit Property
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteProperty}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all shadow-sm"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Property
+              </button>
+
+              <Link
+                href={`/dashboard/properties/${propertyId}/add-room`}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Room
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Error Alert */}
@@ -209,7 +347,7 @@ export default function PropertyDetailsPage() {
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
                 <div className="text-xs text-slate-400 font-medium">Total Rooms</div>
                 <div className="mt-1 text-2xl font-bold text-white">
-                  {property.totalRooms || 0}
+                  {property.totalRooms || property.rooms?.length || 0}
                 </div>
               </div>
               <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
@@ -320,7 +458,7 @@ export default function PropertyDetailsPage() {
                     key={room.id}
                     className="bg-slate-900/70 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all"
                   >
-                    {/* Room Header */}
+                    {/* Room Header with Edit & Delete */}
                     <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -336,16 +474,38 @@ export default function PropertyDetailsPage() {
                         </div>
                       </div>
 
-                      {/* AC Badge */}
-                      {room.hasAc ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                          <Wind className="w-3 h-3" /> AC
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                          Non-AC
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {/* Edit Room Button */}
+                        <button
+                          type="button"
+                          title="Edit Room"
+                          onClick={() => setEditingRoom(room)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Room Button */}
+                        <button
+                          type="button"
+                          title="Delete Room"
+                          onClick={() => handleDeleteRoom(room)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* AC Badge */}
+                        {room.hasAc ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                            <Wind className="w-3 h-3" /> AC
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                            Non-AC
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Rent details */}
@@ -365,9 +525,8 @@ export default function PropertyDetailsPage() {
                         {room.beds?.map((bed) => {
                           const statusStyle = getBedStatusStyle(bed.status);
                           return (
-                            <button
+                            <div
                               key={bed.id}
-                              type="button"
                               onClick={() => handleBedClick(bed, room)}
                               className={`text-left flex flex-col justify-between p-2.5 rounded-xl border ${statusStyle.bg} ${statusStyle.border} hover:scale-[1.02] active:scale-[0.99] transition-all cursor-pointer group/bed focus:outline-none focus:ring-2 focus:ring-indigo-500/50`}
                             >
@@ -376,11 +535,35 @@ export default function PropertyDetailsPage() {
                                   <BedIcon className="w-3.5 h-3.5 text-slate-400 group-hover/bed:text-indigo-400 transition-colors" />
                                   {bed.bedNumber}
                                 </span>
-                                <span
-                                  className={`w-2 h-2 rounded-full ${statusStyle.dot}`}
-                                  title={statusStyle.label}
-                                />
+
+                                {/* Bed Inline Action Buttons */}
+                                <div
+                                  className="flex items-center gap-0.5"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    type="button"
+                                    title="Edit Bed Number"
+                                    onClick={() => setEditingBed(bed)}
+                                    className="p-1 rounded text-slate-400 hover:text-indigo-300 hover:bg-slate-800/80 transition-colors"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Delete Bed"
+                                    onClick={() => handleDeleteBed(bed, room)}
+                                    className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 transition-colors"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                  <span
+                                    className={`w-2 h-2 rounded-full ${statusStyle.dot} ml-1`}
+                                    title={statusStyle.label}
+                                  />
+                                </div>
                               </div>
+
                               <div className="mt-2 flex items-center justify-between text-[11px]">
                                 <span className={`font-semibold ${statusStyle.text}`}>
                                   {statusStyle.label}
@@ -389,7 +572,7 @@ export default function PropertyDetailsPage() {
                                   {bed.status === "OCCUPIED" ? "View Tenant →" : "Assign →"}
                                 </span>
                               </div>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -401,13 +584,53 @@ export default function PropertyDetailsPage() {
           </>
         )}
 
-        {/* Unified Bed Action Modal */}
+        {/* ========================================================================= */}
+        {/* Modals */}
+        {/* ========================================================================= */}
+
+        {/* Unified Bed Action Modal (Existing Tenant Allocation) */}
         <BedActionModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           bed={selectedBed}
           room={selectedRoom}
           onSuccess={fetchPropertyDetails}
+        />
+
+        {/* Edit Property Modal */}
+        <EditPropertyModal
+          isOpen={editPropertyOpen}
+          onClose={() => setEditPropertyOpen(false)}
+          property={property}
+          onSuccess={handlePropertyUpdated}
+        />
+
+        {/* Edit Room Modal */}
+        <EditRoomModal
+          isOpen={Boolean(editingRoom)}
+          onClose={() => setEditingRoom(null)}
+          room={editingRoom}
+          maxFloors={property?.totalFloors}
+          onSuccess={handleRoomUpdated}
+        />
+
+        {/* Edit Bed Modal */}
+        <EditBedModal
+          isOpen={Boolean(editingBed)}
+          onClose={() => setEditingBed(null)}
+          bed={editingBed}
+          onSuccess={handleBedUpdated}
+        />
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={deleteModalConfig.isOpen}
+          onClose={() => setDeleteModalConfig((prev) => ({ ...prev, isOpen: false }))}
+          title={deleteModalConfig.title}
+          message={deleteModalConfig.message}
+          itemDetails={deleteModalConfig.itemDetails}
+          endpoint={deleteModalConfig.endpoint}
+          onSuccess={deleteModalConfig.onSuccess}
         />
       </div>
     </div>

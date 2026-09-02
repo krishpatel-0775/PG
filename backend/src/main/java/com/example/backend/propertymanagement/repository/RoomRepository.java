@@ -38,4 +38,14 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
      * @return Optional containing Room if found
      */
     Optional<Room> findByIdAndPropertyId(Long id, Long propertyId);
+
+    /**
+     * Checks if a room number already exists in a given property, excluding a specific room ID.
+     *
+     * @param propertyId Property ID
+     * @param roomNumber Room number string (e.g., "101")
+     * @param id Room ID to exclude
+     * @return true if exists
+     */
+    boolean existsByPropertyIdAndRoomNumberAndIdNot(Long propertyId, String roomNumber, Long id);
 }

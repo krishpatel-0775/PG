@@ -101,9 +101,10 @@ public class SecurityConfig {
             
             // Request authorization rules
             .authorizeHttpRequests(auth -> auth
-                // Public auth, error & documentation endpoints
+                // Public auth, onboarding, error & documentation endpoints
                 .requestMatchers(
                     "/api/auth/**",
+                    "/api/public/**",
                     "/error",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",

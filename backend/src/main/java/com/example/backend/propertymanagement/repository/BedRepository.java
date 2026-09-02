@@ -45,4 +45,23 @@ public interface BedRepository extends JpaRepository<Bed, Long> {
      * @return Total count
      */
     long countByRoomPropertyId(Long propertyId);
+
+    /**
+     * Checks if a bed number exists in a room.
+     *
+     * @param roomId Room ID
+     * @param bedNumber Bed number string
+     * @return true if exists
+     */
+    boolean existsByRoomIdAndBedNumber(Long roomId, String bedNumber);
+
+    /**
+     * Checks if a bed number exists in a room, excluding a specific bed ID.
+     *
+     * @param roomId Room ID
+     * @param bedNumber Bed number string
+     * @param id Bed ID to exclude
+     * @return true if exists
+     */
+    boolean existsByRoomIdAndBedNumberAndIdNot(Long roomId, String bedNumber, Long id);
 }

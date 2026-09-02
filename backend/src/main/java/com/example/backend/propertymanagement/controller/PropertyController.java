@@ -2,6 +2,7 @@ package com.example.backend.propertymanagement.controller;
 
 import com.example.backend.propertymanagement.dto.request.CreatePropertyRequest;
 import com.example.backend.propertymanagement.dto.request.CreateRoomRequest;
+import com.example.backend.propertymanagement.dto.request.UpdatePropertyRequest;
 import com.example.backend.propertymanagement.dto.response.PropertyResponse;
 import com.example.backend.propertymanagement.dto.response.RoomResponse;
 import com.example.backend.propertymanagement.service.PropertyService;
@@ -74,6 +75,42 @@ public class PropertyController {
         boolean isSuperAdmin = isSuperAdmin(authentication);
         PropertyResponse property = propertyService.getPropertyById(propertyId, userEmail, isSuperAdmin);
         return ResponseEntity.ok(property);
+    }
+
+    /**
+     * Updates an existing property.
+     *
+     * @param id Property ID path variable
+     * @param request Validated property update payload
+     * @param authentication Current user authentication context
+     * @return Updated PropertyResponse DTO with HTTP 200 status
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<PropertyResponse> updateProperty(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdatePropertyRequest request,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        PropertyResponse response = propertyService.updateProperty(id, request, userEmail, isSuperAdmin);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Deletes a property if all its rooms have no active/occupied beds.
+     *
+     * @param id Property ID path variable
+     * @param authentication Current user authentication context
+     * @return HTTP 204 No Content
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProperty(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        propertyService.deleteProperty(id, userEmail, isSuperAdmin);
+        return ResponseEntity.noContent().build();
     }
 
     /**

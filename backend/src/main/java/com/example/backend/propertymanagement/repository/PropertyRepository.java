@@ -38,4 +38,14 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
      * @return true if exists
      */
     boolean existsByNameAndOwnerId(String name, Long ownerId);
+
+    /**
+     * Checks if a property with given name already exists for an owner, excluding a specific property ID.
+     *
+     * @param name Property name
+     * @param ownerId Owner ID
+     * @param id Property ID to exclude
+     * @return true if exists
+     */
+    boolean existsByNameAndOwnerIdAndIdNot(String name, Long ownerId, Long id);
 }
