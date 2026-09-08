@@ -83,16 +83,16 @@ export default function LandingPage() {
               Pricing
             </a>
             <Link
-              href="/login"
+              href="/partner-with-us"
               className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
             >
-              Resident Login
+              Partner With Us
             </Link>
             <Link
-              href="/partner-with-us"
+              href="/login"
               className="inline-flex items-center justify-center text-sm font-semibold text-white bg-[#281ec5] hover:bg-indigo-700 px-5 py-2.5 rounded-xl shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
-              Partner With Us
+              Login
             </Link>
           </nav>
 
@@ -125,19 +125,19 @@ export default function LandingPage() {
               Pricing
             </a>
             <Link
-              href="/login"
+              href="/partner-with-us"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm font-medium text-slate-700 hover:text-indigo-600 py-1"
             >
-              Resident Login
+              Partner With Us
             </Link>
             <div className="pt-2">
               <Link
-                href="/partner-with-us"
+                href="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-[#281ec5] hover:bg-indigo-700 px-5 py-3 rounded-xl shadow-md shadow-indigo-600/20"
               >
-                Partner With Us
+                Login
               </Link>
             </div>
           </div>

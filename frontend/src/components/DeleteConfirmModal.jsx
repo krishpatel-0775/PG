@@ -53,28 +53,28 @@ export default function DeleteConfirmModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-rose-100 bg-rose-50/70">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+            <div className="w-9 h-9 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shadow-xs">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">{title}</h3>
-              <p className="text-xs text-rose-400/80">Permanent action</p>
+              <h3 className="font-bold text-slate-900 text-base">{title}</h3>
+              <p className="text-xs text-rose-600 font-medium">Permanent action</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
             disabled={loading}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-rose-100/50 transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,10 +83,10 @@ export default function DeleteConfirmModal({
         {/* Body */}
         <div className="p-6 space-y-4">
           {/* Warning Message */}
-          <div className="text-sm text-slate-300">
-            <p className="font-medium">{message}</p>
+          <div className="text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">{message}</p>
             {itemDetails && (
-              <p className="mt-2 text-xs text-slate-400 bg-slate-950/50 p-3 rounded-xl border border-slate-800">
+              <p className="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
                 {itemDetails}
               </p>
             )}
@@ -96,20 +96,20 @@ export default function DeleteConfirmModal({
           {errorMessage && (
             <div
               role="alert"
-              className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-start gap-2.5 text-xs animate-in fade-in"
+              className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-2.5 text-xs animate-in fade-in"
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-500" />
               <div className="flex-1 font-medium leading-relaxed">{errorMessage}</div>
             </div>
           )}
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="px-4 py-2 rounded-xl font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-all text-xs sm:text-sm disabled:opacity-50"
+              className="px-4 py-2 rounded-xl font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-xs transition-all text-xs sm:text-sm disabled:opacity-50"
             >
               Cancel
             </button>
@@ -117,7 +117,7 @@ export default function DeleteConfirmModal({
               type="button"
               onClick={handleDelete}
               disabled={loading}
-              className="px-5 py-2 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/20 transition-all text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-2 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-all text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

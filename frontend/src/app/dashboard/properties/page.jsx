@@ -21,9 +21,9 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Wind,
+  RefreshCw,
 } from "lucide-react";
 import EditPropertyModal from "@/components/EditPropertyModal";
 import EditRoomModal from "@/components/EditRoomModal";
@@ -74,10 +74,6 @@ export default function PropertiesListPage() {
       setLoading(false);
     }
   };
-
-  // ===========================================================================
-  // Handlers for Edit & Delete
-  // ===========================================================================
 
   const handlePropertyUpdated = (updated) => {
     setProperties((prev) =>
@@ -211,379 +207,472 @@ export default function PropertiesListPage() {
     switch (status) {
       case "VACANT":
         return {
-          bg: "bg-emerald-500/10",
-          border: "border-emerald-500/30",
-          text: "text-emerald-400",
-          dot: "bg-emerald-400",
+          bg: "bg-emerald-50",
+          border: "border-emerald-200",
+          text: "text-emerald-700",
+          dot: "bg-emerald-500",
           label: "Vacant",
         };
       case "OCCUPIED":
         return {
-          bg: "bg-rose-500/10",
-          border: "border-rose-500/30",
-          text: "text-rose-400",
-          dot: "bg-rose-400",
+          bg: "bg-indigo-50",
+          border: "border-indigo-200",
+          text: "text-indigo-700",
+          dot: "bg-indigo-600",
           label: "Occupied",
         };
+      case "MAINTENANCE":
       default:
         return {
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
-          text: "text-amber-400",
-          dot: "bg-amber-400",
-          label: "Maintenance",
+          bg: "bg-amber-50",
+          border: "border-amber-200",
+          text: "text-amber-700",
+          dot: "bg-amber-500",
+          label: "Maint.",
         };
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-              <Link
-                href="/dashboard"
-                className="hover:text-indigo-400 flex items-center gap-1 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
-              </Link>
-              <span>/</span>
-              <span className="text-slate-200">Properties</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-indigo-400" />
-              Properties & Beds
-            </h1>
-            <p className="mt-1 text-sm text-slate-400">
-              Manage and configure your buildings, rooms, and bed allocations
-            </p>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto w-full pb-16">
+      {/* Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-1.5">
+            <Link
+              href="/dashboard"
+              className="hover:text-indigo-600 flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
+            </Link>
+            <span>/</span>
+            <span className="text-slate-900">Properties</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+              <Building2 className="w-5 h-5" />
+            </div>
+            Property Portfolio &amp; Rooms
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Manage your PG buildings, view room capacity, configure beds, and monitor occupancy.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={fetchProperties}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? "animate-spin text-indigo-600" : ""}`} />
+            Refresh
+          </button>
 
           <Link
             href="/dashboard/properties/new"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] self-start sm:self-auto text-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Add New Property
+            <span>Add Property</span>
           </Link>
         </div>
+      </div>
 
-        {/* Metrics Overview */}
-        {!loading && properties.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-              <div className="text-xs font-medium text-slate-400">Total Properties</div>
-              <div className="mt-1 text-2xl font-bold text-white">{properties.length}</div>
-            </div>
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-              <div className="text-xs font-medium text-slate-400">Total Rooms</div>
-              <div className="mt-1 text-2xl font-bold text-indigo-400">{totalRooms}</div>
-            </div>
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-              <div className="text-xs font-medium text-slate-400">Total Beds</div>
-              <div className="mt-1 text-2xl font-bold text-purple-400">{totalBeds}</div>
-            </div>
-            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-              <div className="text-xs font-medium text-slate-400">Vacant Beds</div>
-              <div className="mt-1 text-2xl font-bold text-emerald-400">{vacantBeds}</div>
+      {/* Error Alert */}
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-500" />
+          <div className="flex-1 font-medium">{errorMessage}</div>
+        </div>
+      )}
+
+      {/* Top 4 KPI Metrics Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Total Properties */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Total Properties
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <Building2 className="w-5 h-5" />
             </div>
           </div>
-        )}
-
-        {/* Search Bar */}
-        {properties.length > 0 && (
-          <div className="relative max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search properties by name, city, or address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            />
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {properties.length}
+            </span>
+            <span className="text-xs font-medium text-slate-500">active locations</span>
           </div>
-        )}
+        </div>
 
-        {/* Error Alert */}
-        {errorMessage && (
-          <div
-            role="alert"
-            className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-start gap-3 text-sm"
-          >
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium">{errorMessage}</div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-            <p className="text-sm text-slate-400">Loading your properties...</p>
-          </div>
-        ) : filteredProperties.length === 0 ? (
-          /* Empty State */
-          <div className="text-center py-16 px-4 bg-slate-900/40 border border-slate-800 rounded-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
-              <Building2 className="w-8 h-8" />
+        {/* Total Rooms */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Total Rooms
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <DoorOpen className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-semibold text-white">
-              {searchQuery ? "No properties match your search" : "No properties found"}
-            </h3>
-            <p className="mt-1 text-sm text-slate-400 max-w-sm mx-auto">
-              {searchQuery
-                ? "Try searching with a different property name or location keyword."
-                : "You haven't added any PG properties yet. Get started by creating your first property."}
-            </p>
-            {!searchQuery && (
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {totalRooms}
+            </span>
+            <span className="text-xs font-medium text-slate-500">configured</span>
+          </div>
+        </div>
+
+        {/* Total Beds */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Total Capacity
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <BedIcon className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {totalBeds}
+            </span>
+            <span className="text-xs font-medium text-slate-500">total beds</span>
+          </div>
+        </div>
+
+        {/* Available Beds */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Available Beds
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight text-emerald-600">
+              {vacantBeds}
+            </span>
+            <span className="text-xs font-medium text-slate-500">vacant for move-in</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Toolbar */}
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by property name, city, address..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+          />
+        </div>
+        <div className="text-xs text-slate-500 font-medium">
+          Showing <span className="font-bold text-slate-800">{filteredProperties.length}</span> of{" "}
+          <span className="font-bold text-slate-800">{properties.length}</span> properties
+        </div>
+      </div>
+
+      {/* Properties List */}
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
+          <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
+          <p className="text-sm font-medium text-slate-500">Loading properties...</p>
+        </div>
+      ) : filteredProperties.length === 0 ? (
+        <div className="py-20 px-4 text-center bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-sm">
+            <Building2 className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">No Properties Found</h3>
+          <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">
+            {searchQuery
+              ? "No properties match your current search query."
+              : "Get started by adding your first PG building or hostel location."}
+          </p>
+          {!searchQuery && (
+            <div className="mt-5">
               <Link
                 href="/dashboard/properties/new"
-                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 text-sm shadow-lg shadow-indigo-600/20 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                Add Your First Property
+                <span>Add First Property</span>
               </Link>
-            )}
-          </div>
-        ) : (
-          /* Property Cards Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property) => {
-              const isExpanded = expandedPropertyId === property.id;
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {filteredProperties.map((p) => {
+            const isExpanded = expandedPropertyId === p.id;
+            const occupancyRate =
+              p.totalBeds > 0
+                ? Math.round(((p.totalBeds - p.vacantBeds) / p.totalBeds) * 100)
+                : 0;
 
-              return (
-                <div
-                  key={property.id}
-                  className="bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all duration-200 shadow-sm hover:shadow-xl flex flex-col justify-between"
-                >
-                  <div className="space-y-4">
-                    {/* Title, Badge & Action Buttons */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div
-                        onClick={() => router.push(`/dashboard/properties/${property.id}`)}
-                        className="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                      >
+            return (
+              <div
+                key={p.id}
+                className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden"
+              >
+                {/* Property Main Row */}
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    {/* Property Details */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                         <Building2 className="w-6 h-6" />
                       </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <h2 className="text-lg font-bold text-slate-900">{p.name}</h2>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                            <Layers className="w-3 h-3 text-slate-500" />
+                            {p.totalFloors || 1} Floors
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          {p.address}, {p.city}, {p.state}
+                        </p>
+                      </div>
+                    </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {/* Edit Property Button */}
+                    {/* Stats & Actions */}
+                    <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+                      {/* Stat Badges */}
+                      <div className="flex items-center gap-3">
+                        <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-center min-w-[70px]">
+                          <span className="text-xs font-bold text-slate-900 block">
+                            {p.totalRooms || 0}
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                            Rooms
+                          </span>
+                        </div>
+
+                        <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-center min-w-[70px]">
+                          <span className="text-xs font-bold text-slate-900 block">
+                            {p.totalBeds || 0}
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                            Beds
+                          </span>
+                        </div>
+
+                        <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-center min-w-[70px]">
+                          <span className="text-xs font-bold text-emerald-700 block">
+                            {p.vacantBeds || 0}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 uppercase font-semibold">
+                            Vacant
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 border-l border-slate-100 pl-4">
+                        <Link
+                          href={`/dashboard/properties/${p.id}/add-room`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Room</span>
+                        </Link>
+
                         <button
                           type="button"
+                          onClick={() => setEditingProperty(p)}
+                          className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-50 border border-slate-200 transition-colors"
                           title="Edit Property"
-                          onClick={() => setEditingProperty(property)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
 
-                        {/* Delete Property Button */}
                         <button
                           type="button"
+                          onClick={() => handleDeleteProperty(p)}
+                          className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-colors"
                           title="Delete Property"
-                          onClick={() => handleDeleteProperty(property)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
 
-                        <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 ml-1">
-                          <Layers className="w-3 h-3 text-indigo-400" />
-                          {property.totalFloors} {property.totalFloors === 1 ? "Floor" : "Floors"}
-                        </span>
-                      </div>
-                    </div>
+                        <Link
+                          href={`/dashboard/properties/${p.id}`}
+                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 transition-all shadow-xs"
+                        >
+                          <span>Manage</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
 
-                    <div>
-                      <h2
-                        onClick={() => router.push(`/dashboard/properties/${property.id}`)}
-                        className="text-xl font-bold text-white hover:text-indigo-400 transition-colors cursor-pointer"
-                      >
-                        {property.name}
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-400 flex items-start gap-1.5 line-clamp-2">
-                        <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-slate-500" />
-                        <span>
-                          {property.address}, {property.city}, {property.state}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Summary Metrics */}
-                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-center">
-                      <div className="bg-slate-950/50 rounded-lg p-2">
-                        <div className="text-[11px] text-slate-400">Rooms</div>
-                        <div className="text-sm font-bold text-white">
-                          {property.totalRooms || property.rooms?.length || 0}
-                        </div>
-                      </div>
-                      <div className="bg-slate-950/50 rounded-lg p-2">
-                        <div className="text-[11px] text-slate-400">Total Beds</div>
-                        <div className="text-sm font-bold text-white">{property.totalBeds || 0}</div>
-                      </div>
-                      <div className="bg-slate-950/50 rounded-lg p-2">
-                        <div className="text-[11px] text-emerald-400 font-medium">Vacant</div>
-                        <div className="text-sm font-bold text-emerald-400">{property.vacantBeds || 0}</div>
-                      </div>
-                    </div>
-
-                    {/* Quick Expand Rooms & Beds (Inline view) */}
-                    {property.rooms && property.rooms.length > 0 && (
-                      <div className="pt-2">
                         <button
                           type="button"
-                          onClick={() => setExpandedPropertyId(isExpanded ? null : property.id)}
-                          className="w-full flex items-center justify-between text-xs text-slate-400 hover:text-slate-200 py-1.5 px-2 rounded-lg bg-slate-950/40 border border-slate-800/80 transition-colors"
+                          onClick={() =>
+                            setExpandedPropertyId(isExpanded ? null : p.id)
+                          }
+                          className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-50 border border-slate-200 transition-colors"
+                          title={isExpanded ? "Collapse Rooms" : "Expand Rooms"}
                         >
-                          <span className="flex items-center gap-1.5 font-medium">
-                            <DoorOpen className="w-3.5 h-3.5 text-indigo-400" />
-                            {isExpanded ? "Hide Rooms & Beds" : `Quick View Rooms (${property.rooms.length})`}
-                          </span>
                           {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-slate-500" />
+                            <ChevronUp className="w-4 h-4" />
                           ) : (
-                            <ChevronDown className="w-4 h-4 text-slate-500" />
+                            <ChevronDown className="w-4 h-4" />
                           )}
                         </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                        {/* Expanded Rooms List */}
-                        {isExpanded && (
-                          <div className="mt-3 space-y-3 max-h-60 overflow-y-auto pr-1">
-                            {property.rooms.map((room) => (
-                              <div
-                                key={room.id}
-                                className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2 text-xs"
-                              >
-                                <div className="flex items-center justify-between border-b border-slate-850 pb-2">
-                                  <div className="font-bold text-white flex items-center gap-1.5">
-                                    <span>Room {room.roomNumber}</span>
-                                    <span className="text-[10px] font-normal text-slate-400 px-1.5 py-0.5 rounded bg-slate-800">
-                                      Fl {room.floor}
-                                    </span>
-                                  </div>
+                {/* Expanded Rooms Accordion */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 bg-slate-50/60 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                        <DoorOpen className="w-4 h-4 text-indigo-600" />
+                        Configured Rooms &amp; Bed Allocations
+                      </h3>
+                      <Link
+                        href={`/dashboard/properties/${p.id}`}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                      >
+                        Open Floor Matrix &rarr;
+                      </Link>
+                    </div>
 
-                                  {/* Room Actions */}
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      type="button"
-                                      title="Edit Room"
-                                      onClick={() => setEditingRoom(room)}
-                                      className="p-1 rounded text-slate-400 hover:text-indigo-400 hover:bg-slate-800"
-                                    >
-                                      <Pencil className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      title="Delete Room"
-                                      onClick={() => handleDeleteRoom(room, property.id)}
-                                      className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* Bed Pills */}
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  {room.beds?.map((bed) => {
-                                    const statusStyle = getBedStatusStyle(bed.status);
-                                    return (
-                                      <div
-                                        key={bed.id}
-                                        className={`flex items-center justify-between p-1.5 rounded-lg border ${statusStyle.bg} ${statusStyle.border}`}
-                                      >
-                                        <div className="flex items-center gap-1 truncate text-[11px]">
-                                          <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                                          <span className="font-semibold text-white truncate">
-                                            {bed.bedNumber}
-                                          </span>
-                                        </div>
-
-                                        <div className="flex items-center gap-0.5">
-                                          <button
-                                            type="button"
-                                            title="Edit Bed"
-                                            onClick={() => setEditingBed(bed)}
-                                            className="p-1 rounded text-slate-400 hover:text-indigo-300 hover:bg-slate-800/80"
-                                          >
-                                            <Pencil className="w-2.5 h-2.5" />
-                                          </button>
-                                          <button
-                                            type="button"
-                                            title="Delete Bed"
-                                            onClick={() => handleDeleteBed(bed, room, property.id)}
-                                            className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800/80"
-                                          >
-                                            <Trash2 className="w-2.5 h-2.5" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                    {!p.rooms || p.rooms.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200">
+                        No rooms created yet. Click &quot;Add Room&quot; to configure floor units and beds.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {p.rooms.map((room) => (
+                          <div
+                            key={room.id}
+                            className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs hover:border-indigo-200 transition-all"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-slate-900">
+                                  Room {room.roomNumber}
+                                </span>
+                                {room.hasAc && (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-100">
+                                    <Wind className="w-2.5 h-2.5" /> AC
+                                  </span>
+                                )}
                               </div>
-                            ))}
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRoom(room)}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 rounded"
+                                  title="Edit Room"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRoom(room, p.id)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                  title="Delete Room"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                              <span>Floor {room.floor || 1} &bull; {room.roomType}</span>
+                              <span className="font-bold text-slate-800">₹{room.baseRent}/mo</span>
+                            </div>
+
+                            {/* Beds Pills */}
+                            <div className="pt-1 flex flex-wrap gap-1.5">
+                              {room.beds && room.beds.length > 0 ? (
+                                room.beds.map((bed) => {
+                                  const style = getBedStatusStyle(bed.status);
+                                  return (
+                                    <div
+                                      key={bed.id}
+                                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium ${style.bg} ${style.border} ${style.text}`}
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                                      <span>{bed.bedNumber}</span>
+                                      <span className="text-[9px] opacity-75">({style.label})</span>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">
+                                  No beds generated
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        ))}
                       </div>
                     )}
                   </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-                  {/* Footer Action Link */}
-                  <div
-                    onClick={() => router.push(`/dashboard/properties/${property.id}`)}
-                    className="mt-6 pt-4 border-t border-slate-800/60 flex items-center justify-between text-sm text-slate-400 hover:text-indigo-400 cursor-pointer transition-colors"
-                  >
-                    <span className="text-xs font-medium">Manage Rooms & Beds</span>
-                    <ArrowRight className="w-4 h-4 hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* Modals */}
-        {/* ========================================================================= */}
-
-        {/* Edit Property Modal */}
+      {/* Edit Property Modal */}
+      {editingProperty && (
         <EditPropertyModal
-          isOpen={Boolean(editingProperty)}
-          onClose={() => setEditingProperty(null)}
+          isOpen={!!editingProperty}
           property={editingProperty}
+          onClose={() => setEditingProperty(null)}
           onSuccess={handlePropertyUpdated}
         />
+      )}
 
-        {/* Edit Room Modal */}
+      {/* Edit Room Modal */}
+      {editingRoom && (
         <EditRoomModal
-          isOpen={Boolean(editingRoom)}
-          onClose={() => setEditingRoom(null)}
+          isOpen={!!editingRoom}
           room={editingRoom}
+          onClose={() => setEditingRoom(null)}
           onSuccess={handleRoomUpdated}
         />
+      )}
 
-        {/* Edit Bed Modal */}
+      {/* Edit Bed Modal */}
+      {editingBed && (
         <EditBedModal
-          isOpen={Boolean(editingBed)}
-          onClose={() => setEditingBed(null)}
+          isOpen={!!editingBed}
           bed={editingBed}
+          onClose={() => setEditingBed(null)}
           onSuccess={handleBedUpdated}
         />
+      )}
 
-        {/* Delete Confirmation Modal */}
-        <DeleteConfirmModal
-          isOpen={deleteModalConfig.isOpen}
-          onClose={() => setDeleteModalConfig((prev) => ({ ...prev, isOpen: false }))}
-          title={deleteModalConfig.title}
-          message={deleteModalConfig.message}
-          itemDetails={deleteModalConfig.itemDetails}
-          endpoint={deleteModalConfig.endpoint}
-          onSuccess={deleteModalConfig.onSuccess}
-        />
-      </div>
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalConfig.isOpen}
+        title={deleteModalConfig.title}
+        message={deleteModalConfig.message}
+        itemDetails={deleteModalConfig.itemDetails}
+        endpoint={deleteModalConfig.endpoint}
+        onClose={() => setDeleteModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        onSuccess={deleteModalConfig.onSuccess}
+      />
     </div>
   );
 }

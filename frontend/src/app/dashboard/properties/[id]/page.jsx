@@ -191,29 +191,32 @@ export default function PropertyDetailsPage() {
     switch (status) {
       case "VACANT":
         return {
-          bg: "bg-emerald-500/10",
-          border: "border-emerald-500/30",
-          text: "text-emerald-400",
-          dot: "bg-emerald-400",
+          bg: "bg-emerald-50/70",
+          border: "border-emerald-200",
+          hoverBorder: "hover:border-emerald-300",
+          text: "text-emerald-700",
+          dot: "bg-emerald-500",
           label: "Vacant",
           icon: CheckCircle2,
         };
       case "OCCUPIED":
         return {
-          bg: "bg-rose-500/10",
-          border: "border-rose-500/30",
-          text: "text-rose-400",
-          dot: "bg-rose-400",
+          bg: "bg-indigo-50/70",
+          border: "border-indigo-200",
+          hoverBorder: "hover:border-indigo-300",
+          text: "text-indigo-700",
+          dot: "bg-indigo-600",
           label: "Occupied",
           icon: XCircle,
         };
       case "MAINTENANCE":
       default:
         return {
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
-          text: "text-amber-400",
-          dot: "bg-amber-400",
+          bg: "bg-amber-50/70",
+          border: "border-amber-200",
+          hoverBorder: "hover:border-amber-300",
+          text: "text-amber-700",
+          dot: "bg-amber-500",
           label: "Maintenance",
           icon: AlertTriangle,
         };
@@ -255,334 +258,342 @@ export default function PropertyDetailsPage() {
   }, [property]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-800 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-              <Link
-                href="/dashboard/properties"
-                className="hover:text-indigo-400 flex items-center gap-1 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Properties
-              </Link>
-              <span>/</span>
-              <span className="text-slate-200">{property?.name || "Property Details"}</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-indigo-400" />
-              {property?.name || "Loading..."}
-            </h1>
-
-            {property && (
-              <p className="text-sm text-slate-400 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                {property.address}, {property.city}, {property.state} &bull;{" "}
-                <span className="text-slate-300 font-medium">
-                  {property.totalFloors} {property.totalFloors === 1 ? "Floor" : "Floors"}
-                </span>
-              </p>
-            )}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto w-full pb-16">
+      {/* Navigation & Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-2">
+            <Link
+              href="/dashboard/properties"
+              className="hover:text-indigo-600 flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Properties
+            </Link>
+            <span>/</span>
+            <span className="text-slate-900">{property?.name || "Property Details"}</span>
           </div>
 
-          {/* Action Buttons for Property */}
-          {property && (
-            <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setEditPropertyOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-900 border border-slate-700 hover:bg-slate-800 hover:border-slate-600 transition-all shadow-sm"
-              >
-                <Pencil className="w-3.5 h-3.5 text-indigo-400" />
-                Edit Property
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDeleteProperty}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/30 transition-all shadow-sm"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete Property
-              </button>
-
-              <Link
-                href={`/dashboard/properties/${propertyId}/add-room`}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] text-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Room
-              </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs">
+              <Building2 className="w-6 h-6" />
             </div>
-          )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                {property?.name || "Loading..."}
+              </h1>
+              {property && (
+                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+                  <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  {property.address}, {property.city}, {property.state} &bull;{" "}
+                  <span className="text-slate-700 font-medium">
+                    {property.totalFloors} {property.totalFloors === 1 ? "Floor" : "Floors"}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Error Alert */}
-        {errorMessage && (
-          <div
-            role="alert"
-            className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-start gap-3 text-sm"
-          >
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 font-medium">{errorMessage}</div>
+        {/* Action Buttons for Property */}
+        {property && (
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setEditPropertyOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all shadow-xs"
+            >
+              <Pencil className="w-3.5 h-3.5 text-slate-500" />
+              Edit Property
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDeleteProperty}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-all shadow-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Property
+            </button>
+
+            <Link
+              href={`/dashboard/properties/${propertyId}/add-room`}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-all active:scale-[0.99] text-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Room
+            </Link>
           </div>
         )}
+      </div>
 
-        {/* Loading Spinner */}
-        {loading ? (
-          <div className="py-24 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-            <p className="text-sm text-slate-400">Loading rooms and beds...</p>
-          </div>
-        ) : !property ? (
-          <div className="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-2xl">
-            <p className="text-slate-400">Property not found.</p>
-          </div>
-        ) : (
-          <>
-            {/* Overview Stats Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-                <div className="text-xs text-slate-400 font-medium">Total Rooms</div>
-                <div className="mt-1 text-2xl font-bold text-white">
-                  {property.totalRooms || property.rooms?.length || 0}
-                </div>
+      {/* Error Alert */}
+      {errorMessage && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-start gap-3 text-sm animate-in fade-in"
+        >
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-500" />
+          <div className="flex-1 font-medium">{errorMessage}</div>
+        </div>
+      )}
+
+      {/* Loading Spinner */}
+      {loading ? (
+        <div className="py-24 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+          <p className="text-sm text-slate-500 font-medium">Loading rooms and beds...</p>
+        </div>
+      ) : !property ? (
+        <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+          <p className="text-slate-500">Property not found.</p>
+        </div>
+      ) : (
+        <>
+          {/* Overview Stats Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Rooms
               </div>
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-                <div className="text-xs text-slate-400 font-medium">Total Beds</div>
-                <div className="mt-1 text-2xl font-bold text-purple-400">
-                  {property.totalBeds || 0}
-                </div>
-              </div>
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-                <div className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  Vacant Beds
-                </div>
-                <div className="mt-1 text-2xl font-bold text-emerald-400">
-                  {property.vacantBeds || 0}
-                </div>
-              </div>
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-                <div className="text-xs text-rose-400 font-medium flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-400" />
-                  Occupied Beds
-                </div>
-                <div className="mt-1 text-2xl font-bold text-rose-400">
-                  {property.occupiedBeds || 0}
-                </div>
+              <div className="mt-1.5 text-2xl sm:text-3xl font-bold text-slate-900">
+                {property.totalRooms || property.rooms?.length || 0}
               </div>
             </div>
-
-            {/* Filter controls & legend */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-800">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 mr-2">
-                  <Filter className="w-3.5 h-3.5" />
-                  Filters:
-                </div>
-
-                {/* Floor Filter */}
-                <select
-                  value={floorFilter}
-                  onChange={(e) => setFloorFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="ALL">All Floors</option>
-                  {availableFloors.map((floor) => (
-                    <option key={floor} value={floor.toString()}>
-                      Floor {floor}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Room Type Filter */}
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="ALL">All Sharing Types</option>
-                  <option value="SINGLE">Single</option>
-                  <option value="DOUBLE">Double (2)</option>
-                  <option value="TRIPLE">Triple (3)</option>
-                  <option value="FOUR_SHARING">Four Sharing (4)</option>
-                </select>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Total Beds
               </div>
-
-              {/* Status Indicator Legend */}
-              <div className="flex items-center gap-4 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-500/20" />
-                  <span className="text-slate-300">Vacant</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-400 ring-2 ring-rose-500/20" />
-                  <span className="text-slate-300">Occupied</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-amber-500/20" />
-                  <span className="text-slate-300">Maintenance</span>
-                </div>
+              <div className="mt-1.5 text-2xl sm:text-3xl font-bold text-indigo-600">
+                {property.totalBeds || 0}
               </div>
             </div>
-
-            {/* Rooms Grid */}
-            {filteredRooms.length === 0 ? (
-              <div className="text-center py-16 px-4 bg-slate-900/40 border border-slate-800 rounded-2xl">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-3">
-                  <BedIcon className="w-7 h-7" />
-                </div>
-                <h3 className="text-base font-semibold text-white">No rooms found</h3>
-                <p className="mt-1 text-sm text-slate-400 max-w-sm mx-auto">
-                  {property.rooms?.length === 0
-                    ? "Start creating rooms and beds for this property."
-                    : "No rooms match your active filter criteria."}
-                </p>
-                {property.rooms?.length === 0 && (
-                  <Link
-                    href={`/dashboard/properties/${propertyId}/add-room`}
-                    className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 text-sm shadow-lg shadow-indigo-600/20 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add First Room
-                  </Link>
-                )}
+            <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 shadow-xs">
+              <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Vacant Beds
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRooms.map((room) => (
-                  <div
-                    key={room.id}
-                    className="bg-slate-900/70 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all"
-                  >
-                    {/* Room Header with Edit & Delete */}
-                    <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold text-white tracking-tight">
-                            Room {room.roomNumber}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                            Floor {room.floor}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400 mt-1">
-                          {formatRoomType(room.roomType)}
-                        </div>
+              <div className="mt-1.5 text-2xl sm:text-3xl font-bold text-emerald-700">
+                {property.vacantBeds || 0}
+              </div>
+            </div>
+            <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-2xl p-5 shadow-xs">
+              <div className="text-xs font-semibold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                Occupied Beds
+              </div>
+              <div className="mt-1.5 text-2xl sm:text-3xl font-bold text-indigo-900">
+                {property.occupiedBeds || 0}
+              </div>
+            </div>
+          </div>
+
+          {/* Filter controls & legend */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mr-2">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                Filters:
+              </div>
+
+              {/* Floor Filter */}
+              <select
+                value={floorFilter}
+                onChange={(e) => setFloorFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
+              >
+                <option value="ALL">All Floors</option>
+                {availableFloors.map((floor) => (
+                  <option key={floor} value={floor.toString()}>
+                    Floor {floor}
+                  </option>
+                ))}
+              </select>
+
+              {/* Room Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
+              >
+                <option value="ALL">All Sharing Types</option>
+                <option value="SINGLE">Single</option>
+                <option value="DOUBLE">Double (2)</option>
+                <option value="TRIPLE">Triple (3)</option>
+                <option value="FOUR_SHARING">Four Sharing (4)</option>
+              </select>
+            </div>
+
+            {/* Status Indicator Legend */}
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
+                <span className="text-slate-600 font-medium">Vacant</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 ring-2 ring-indigo-100" />
+                <span className="text-slate-600 font-medium">Occupied</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-100" />
+                <span className="text-slate-600 font-medium">Maintenance</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Rooms Grid */}
+          {filteredRooms.length === 0 ? (
+            <div className="text-center py-16 px-4 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                <BedIcon className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-900">No rooms found</h3>
+              <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">
+                {property.rooms?.length === 0
+                  ? "Start creating rooms and beds for this property."
+                  : "No rooms match your active filter criteria."}
+              </p>
+              {property.rooms?.length === 0 && (
+                <Link
+                  href={`/dashboard/properties/${propertyId}/add-room`}
+                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-700 text-sm shadow-xs transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add First Room
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredRooms.map((room) => (
+                <div
+                  key={room.id}
+                  className="bg-white border border-slate-200/80 hover:border-slate-300 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md transition-all"
+                >
+                  {/* Room Header with Edit & Delete */}
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-slate-900 tracking-tight">
+                          Room {room.roomNumber}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
+                          Floor {room.floor}
+                        </span>
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {/* Edit Room Button */}
-                        <button
-                          type="button"
-                          title="Edit Room"
-                          onClick={() => setEditingRoom(room)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Room Button */}
-                        <button
-                          type="button"
-                          title="Delete Room"
-                          onClick={() => handleDeleteRoom(room)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* AC Badge */}
-                        {room.hasAc ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                            <Wind className="w-3 h-3" /> AC
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                            Non-AC
-                          </span>
-                        )}
+                      <div className="text-xs text-slate-500 mt-1">
+                        {formatRoomType(room.roomType)}
                       </div>
                     </div>
 
-                    {/* Rent details */}
-                    <div className="flex items-center justify-between text-xs text-slate-400">
-                      <span>Base Rent:</span>
-                      <span className="font-semibold text-white text-sm">
-                        ₹{room.baseRent?.toLocaleString("en-IN")} / mo
-                      </span>
-                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {/* Edit Room Button */}
+                      <button
+                        type="button"
+                        title="Edit Room"
+                        onClick={() => setEditingRoom(room)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
 
-                    {/* Beds Grid */}
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Beds ({room.beds?.length || 0})
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {room.beds?.map((bed) => {
-                          const statusStyle = getBedStatusStyle(bed.status);
-                          return (
-                            <div
-                              key={bed.id}
-                              onClick={() => handleBedClick(bed, room)}
-                              className={`text-left flex flex-col justify-between p-2.5 rounded-xl border ${statusStyle.bg} ${statusStyle.border} hover:scale-[1.02] active:scale-[0.99] transition-all cursor-pointer group/bed focus:outline-none focus:ring-2 focus:ring-indigo-500/50`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-sm text-white flex items-center gap-1.5 group-hover/bed:text-indigo-300 transition-colors">
-                                  <BedIcon className="w-3.5 h-3.5 text-slate-400 group-hover/bed:text-indigo-400 transition-colors" />
-                                  {bed.bedNumber}
-                                </span>
+                      {/* Delete Room Button */}
+                      <button
+                        type="button"
+                        title="Delete Room"
+                        onClick={() => handleDeleteRoom(room)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
 
-                                {/* Bed Inline Action Buttons */}
-                                <div
-                                  className="flex items-center gap-0.5"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    type="button"
-                                    title="Edit Bed Number"
-                                    onClick={() => setEditingBed(bed)}
-                                    className="p-1 rounded text-slate-400 hover:text-indigo-300 hover:bg-slate-800/80 transition-colors"
-                                  >
-                                    <Pencil className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Delete Bed"
-                                    onClick={() => handleDeleteBed(bed, room)}
-                                    className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                  <span
-                                    className={`w-2 h-2 rounded-full ${statusStyle.dot} ml-1`}
-                                    title={statusStyle.label}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="mt-2 flex items-center justify-between text-[11px]">
-                                <span className={`font-semibold ${statusStyle.text}`}>
-                                  {statusStyle.label}
-                                </span>
-                                <span className="text-[10px] text-slate-500 group-hover/bed:text-slate-300 transition-colors">
-                                  {bed.status === "OCCUPIED" ? "View Tenant →" : "Assign →"}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      {/* AC Badge */}
+                      {room.hasAc ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                          <Wind className="w-3 h-3" /> AC
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                          Non-AC
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+
+                  {/* Rent details */}
+                  <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50/80 px-3 py-2 rounded-xl border border-slate-100">
+                    <span>Base Rent:</span>
+                    <span className="font-bold text-slate-900 text-sm">
+                      ₹{room.baseRent?.toLocaleString("en-IN")} / mo
+                    </span>
+                  </div>
+
+                  {/* Beds Grid */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      Beds ({room.beds?.length || 0})
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {room.beds?.map((bed) => {
+                        const statusStyle = getBedStatusStyle(bed.status);
+                        return (
+                          <div
+                            key={bed.id}
+                            onClick={() => handleBedClick(bed, room)}
+                            className={`text-left flex flex-col justify-between p-3 rounded-xl border ${statusStyle.bg} ${statusStyle.border} ${statusStyle.hoverBorder} hover:shadow-xs hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer group/bed`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5 group-hover/bed:text-indigo-600 transition-colors">
+                                <BedIcon className="w-3.5 h-3.5 text-slate-400 group-hover/bed:text-indigo-600 transition-colors" />
+                                {bed.bedNumber}
+                              </span>
+
+                              {/* Bed Inline Action Buttons */}
+                              <div
+                                className="flex items-center gap-0.5"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  title="Edit Bed Number"
+                                  onClick={() => setEditingBed(bed)}
+                                  className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-white/80 transition-colors"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  title="Delete Bed"
+                                  onClick={() => handleDeleteBed(bed, room)}
+                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-white/80 transition-colors"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                                <span
+                                  className={`w-2 h-2 rounded-full ${statusStyle.dot} ml-1`}
+                                  title={statusStyle.label}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mt-2.5 flex items-center justify-between text-[11px]">
+                              <span className={`font-bold ${statusStyle.text}`}>
+                                {statusStyle.label}
+                              </span>
+                              <span className="text-[10px] text-slate-500 group-hover/bed:text-indigo-600 font-medium transition-colors">
+                                {bed.status === "OCCUPIED" ? "View Tenant →" : "Assign →"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
         {/* ========================================================================= */}
         {/* Modals */}
@@ -633,6 +644,5 @@ export default function PropertyDetailsPage() {
           onSuccess={deleteModalConfig.onSuccess}
         />
       </div>
-    </div>
-  );
+    );
 }
