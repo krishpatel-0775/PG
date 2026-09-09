@@ -32,6 +32,17 @@ public interface FinanceService {
     List<InvoiceResponse> getPendingOwnerInvoices(String ownerEmail, boolean isSuperAdmin);
 
     /**
+     * Retrieves all invoices (historical and pending) across properties owned by the authenticated owner,
+     * optionally filtered by status (ALL, PAID, UNPAID, PARTIALLY_PAID, PENDING).
+     *
+     * @param ownerEmail Email of the authenticated owner
+     * @param isSuperAdmin True if user has SUPER_ADMIN role
+     * @param status Optional filter status
+     * @return List of InvoiceResponse DTOs
+     */
+    List<InvoiceResponse> getAllOwnerInvoices(String ownerEmail, boolean isSuperAdmin, String status);
+
+    /**
      * Retrieves all invoices (historical and pending) for the authenticated tenant.
      *
      * @param tenantEmail Email of the authenticated tenant

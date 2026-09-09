@@ -43,8 +43,32 @@ export default function DashboardLayout({ children }) {
       setUserRole(role);
       setUserName(name);
       setUserEmail(email);
+
+      fetchOpenComplaints(role);
     }
   }, [router]);
+
+  const [openComplaintsCount, setOpenComplaintsCount] = useState(0);
+
+  const fetchOpenComplaints = async (role) => {
+    try {
+      if (role === "ROLE_TENANT") {
+        const res = await api.get("/complaints/my");
+        if (Array.isArray(res.data)) {
+          const count = res.data.filter((c) => c.status === "OPEN").length;
+          setOpenComplaintsCount(count);
+        }
+      } else {
+        const res = await api.get("/complaints/owner");
+        if (Array.isArray(res.data)) {
+          const count = res.data.filter((c) => c.status === "OPEN").length;
+          setOpenComplaintsCount(count);
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch active complaints count", err);
+    }
+  };
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -68,7 +92,12 @@ export default function DashboardLayout({ children }) {
     { name: "Allocations", href: "/dashboard/allocations", icon: Calendar },
     { name: "Rent & Invoices", href: "/dashboard/rent", icon: IndianRupee },
     { name: "Finance & Billing", href: "/dashboard/finance", icon: FileText },
-    { name: "Complaints", href: "/dashboard/admin-complaints", icon: Wrench, badge: 2 },
+    {
+      name: "Complaints",
+      href: "/dashboard/admin-complaints",
+      icon: Wrench,
+      badge: openComplaintsCount > 0 ? openComplaintsCount : null,
+    },
     { name: "Notice Board", href: "/dashboard/announcements", icon: Megaphone },
   ];
 
@@ -77,7 +106,12 @@ export default function DashboardLayout({ children }) {
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
     { name: "My Room & Bed", href: "/dashboard/my-room", icon: Home },
     { name: "Rent & Payments", href: "/dashboard/my-dues", icon: IndianRupee },
-    { name: "Complaints", href: "/dashboard/my-complaints", icon: Wrench },
+    {
+      name: "Complaints",
+      href: "/dashboard/my-complaints",
+      icon: Wrench,
+      badge: openComplaintsCount > 0 ? openComplaintsCount : null,
+    },
   ];
 
   const isTenant = userRole === "ROLE_TENANT";

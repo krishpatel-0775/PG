@@ -36,6 +36,19 @@ public class DashboardController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * GET /api/dashboard/summary/owner:
+     * Aggregates occupancy, revenue, dues, and maintenance tickets across all properties of the owner.
+     */
+    @GetMapping("/summary/owner")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<DashboardSummaryResponse> getOwnerSummary(Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        DashboardSummaryResponse response = dashboardService.getOwnerSummary(userEmail, isSuperAdmin);
+        return ResponseEntity.ok(response);
+    }
+
     private boolean isSuperAdmin(Authentication authentication) {
         if (authentication == null) return false;
         return authentication.getAuthorities().stream()

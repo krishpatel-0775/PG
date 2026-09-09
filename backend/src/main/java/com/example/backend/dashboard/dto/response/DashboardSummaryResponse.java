@@ -23,6 +23,12 @@ public class DashboardSummaryResponse {
     private Integer vacantBeds;
     private Integer maintenanceBeds;
     private BigDecimal totalPendingRent;
+    private Integer unpaidInvoicesCount;
+    private BigDecimal currentMonthRevenue;
+    private BigDecimal lastMonthRevenue;
+    private Double revenueGrowthRate;
     private Integer openComplaintsCount;
+    private Integer inProgressComplaintsCount;
+    private Integer resolvedComplaintsCount;
     private Double occupancyRate;
 }

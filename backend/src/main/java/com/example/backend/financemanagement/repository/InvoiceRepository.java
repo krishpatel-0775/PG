@@ -76,4 +76,49 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
             @Param("endDate") LocalDate endDate);
 
     boolean existsByAllocationIdAndInvoiceMonth(Long allocationId, String invoiceMonth);
+
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+           "WHERE i.allocation.bed.room.property.id = :propertyId " +
+           "AND i.status IN :statuses")
+    long countByPropertyIdAndStatusIn(
+            @Param("propertyId") Long propertyId,
+            @Param("statuses") List<InvoiceStatus> statuses);
+
+    @Query("SELECT COALESCE(SUM(i.totalAmount - i.amountPaid), 0) FROM Invoice i " +
+           "WHERE i.allocation.bed.room.property.owner.id = :ownerId " +
+           "AND i.status IN :statuses")
+    BigDecimal sumOutstandingDuesByOwnerIdAndStatusIn(
+            @Param("ownerId") Long ownerId,
+            @Param("statuses") List<InvoiceStatus> statuses);
+
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+           "WHERE i.allocation.bed.room.property.owner.id = :ownerId " +
+           "AND i.status IN :statuses")
+    long countByOwnerIdAndStatusIn(
+            @Param("ownerId") Long ownerId,
+            @Param("statuses") List<InvoiceStatus> statuses);
+
+    @Query("SELECT COALESCE(SUM(i.amountPaid), 0) FROM Invoice i " +
+           "WHERE i.allocation.bed.room.property.owner.id = :ownerId " +
+           "AND i.invoiceDate >= :startDate AND i.invoiceDate <= :endDate")
+    BigDecimal sumAmountPaidByOwnerIdAndInvoiceDateBetween(
+            @Param("ownerId") Long ownerId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COALESCE(SUM(i.totalAmount - i.amountPaid), 0) FROM Invoice i " +
+           "WHERE i.status IN :statuses")
+    BigDecimal sumOutstandingDuesAllAndStatusIn(
+            @Param("statuses") List<InvoiceStatus> statuses);
+
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+           "WHERE i.status IN :statuses")
+    long countAllByStatusIn(
+            @Param("statuses") List<InvoiceStatus> statuses);
+
+    @Query("SELECT COALESCE(SUM(i.amountPaid), 0) FROM Invoice i " +
+           "WHERE i.invoiceDate >= :startDate AND i.invoiceDate <= :endDate")
+    BigDecimal sumAmountPaidAllAndInvoiceDateBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 }

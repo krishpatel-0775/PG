@@ -3,6 +3,8 @@ package com.example.backend.propertymanagement.repository;
 import com.example.backend.propertymanagement.entity.Bed;
 import com.example.backend.propertymanagement.entity.BedStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -64,4 +66,22 @@ public interface BedRepository extends JpaRepository<Bed, Long> {
      * @return true if exists
      */
     boolean existsByRoomIdAndBedNumberAndIdNot(Long roomId, String bedNumber, Long id);
+
+    /**
+     * Counts all beds belonging to a specific owner across all properties.
+     */
+    @Query("SELECT COUNT(b) FROM Bed b WHERE b.room.property.owner.id = :ownerId")
+    long countByRoomPropertyOwnerId(@Param("ownerId") Long ownerId);
+
+    /**
+     * Counts beds belonging to a specific owner by status across all properties.
+     */
+    @Query("SELECT COUNT(b) FROM Bed b WHERE b.room.property.owner.id = :ownerId AND b.status = :status")
+    long countByRoomPropertyOwnerIdAndStatus(@Param("ownerId") Long ownerId, @Param("status") BedStatus status);
+
+    /**
+     * Counts all beds in system by status (Super Admin).
+     */
+    @Query("SELECT COUNT(b) FROM Bed b WHERE b.status = :status")
+    long countAllByStatus(@Param("status") BedStatus status);
 }

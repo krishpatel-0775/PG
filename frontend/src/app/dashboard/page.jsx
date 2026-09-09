@@ -36,6 +36,10 @@ export default function DashboardPage() {
   const [notices, setNotices] = useState([]);
   const [loadingNotices, setLoadingNotices] = useState(true);
 
+  // Operational Summary Metrics State
+  const [summary, setSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
   // Route protection & Data Loading
   useEffect(() => {
     const token = Cookies.get("token");
@@ -51,8 +55,137 @@ export default function DashboardPage() {
       setIsAuthenticated(true);
 
       fetchRecentNotices(role);
+      fetchDashboardMetrics(role);
     }
   }, [router]);
+
+  const fetchDashboardMetrics = async (role) => {
+    if (role !== "ROLE_PG_OWNER" && role !== "ROLE_SUPER_ADMIN") {
+      setLoadingSummary(false);
+      return;
+    }
+    setLoadingSummary(true);
+    try {
+      // 1. Try owner aggregated endpoint
+      try {
+        const res = await api.get("/dashboard/summary/owner");
+        if (res.data) {
+          setSummary(res.data);
+          setLoadingSummary(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Direct owner summary endpoint not reachable, aggregating via properties...", e);
+      }
+
+      // 2. Resilient fallback: fetch properties and compute
+      const propRes = await api.get("/properties");
+      const properties = propRes.data || [];
+      if (properties.length === 0) {
+        setSummary({
+          totalBeds: 0,
+          occupiedBeds: 0,
+          vacantBeds: 0,
+          maintenanceBeds: 0,
+          totalPendingRent: 0,
+          unpaidInvoicesCount: 0,
+          currentMonthRevenue: 0,
+          lastMonthRevenue: 0,
+          revenueGrowthRate: 0,
+          openComplaintsCount: 0,
+          inProgressComplaintsCount: 0,
+          resolvedComplaintsCount: 0,
+          occupancyRate: 0,
+        });
+        setLoadingSummary(false);
+        return;
+      }
+
+      let totalBeds = 0;
+      let occupiedBeds = 0;
+      let totalPendingRent = 0;
+      let openComplaintsCount = 0;
+      let inProgressComplaintsCount = 0;
+      let resolvedComplaintsCount = 0;
+      let currentMonthRevenue = 0;
+      let lastMonthRevenue = 0;
+      let unpaidInvoicesCount = 0;
+
+      // Count unpaid invoices
+      try {
+        const pendingInvRes = await api.get("/finance/invoices/pending");
+        if (Array.isArray(pendingInvRes.data)) {
+          unpaidInvoicesCount = pendingInvRes.data.length;
+        }
+      } catch (e) {
+        console.warn("Could not fetch pending invoices count", e);
+      }
+
+      // Complaints breakdown
+      try {
+        const compRes = await api.get("/complaints/owner");
+        if (Array.isArray(compRes.data)) {
+          openComplaintsCount = compRes.data.filter((c) => c.status === "OPEN").length;
+          inProgressComplaintsCount = compRes.data.filter((c) => c.status === "IN_PROGRESS").length;
+          resolvedComplaintsCount = compRes.data.filter((c) => c.status === "RESOLVED").length;
+        }
+      } catch (e) {
+        console.warn("Could not fetch owner complaints", e);
+      }
+
+      for (const p of properties) {
+        try {
+          const sRes = await api.get(`/dashboard/summary/property/${p.id}`);
+          if (sRes.data) {
+            totalBeds += sRes.data.totalBeds || 0;
+            occupiedBeds += sRes.data.occupiedBeds || 0;
+            totalPendingRent += Number(sRes.data.totalPendingRent) || 0;
+            if (sRes.data.currentMonthRevenue !== undefined) {
+              currentMonthRevenue += Number(sRes.data.currentMonthRevenue) || 0;
+            }
+            if (sRes.data.lastMonthRevenue !== undefined) {
+              lastMonthRevenue += Number(sRes.data.lastMonthRevenue) || 0;
+            }
+            if (sRes.data.unpaidInvoicesCount !== undefined) {
+              unpaidInvoicesCount = Math.max(unpaidInvoicesCount, sRes.data.unpaidInvoicesCount);
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch summary for property ${p.id}`, e);
+        }
+      }
+
+      const occupancyRate =
+        totalBeds > 0 ? Number(((occupiedBeds / totalBeds) * 100).toFixed(1)) : 0;
+
+      let revenueGrowthRate = 0;
+      if (lastMonthRevenue > 0) {
+        revenueGrowthRate = Number(
+          (((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(1)
+        );
+      } else if (currentMonthRevenue > 0) {
+        revenueGrowthRate = 100.0;
+      }
+
+      setSummary({
+        totalBeds,
+        occupiedBeds,
+        occupancyRate,
+        totalPendingRent,
+        unpaidInvoicesCount,
+        currentMonthRevenue,
+        lastMonthRevenue,
+        revenueGrowthRate,
+        openComplaintsCount,
+        inProgressComplaintsCount,
+        resolvedComplaintsCount,
+      });
+    } catch (err) {
+      console.error("Failed to load dashboard metrics", err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
 
   const fetchRecentNotices = async (role) => {
     setLoadingNotices(true);
@@ -287,14 +420,32 @@ export default function DashboardPage() {
                 <Building2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">94.2%</span>
-              <span className="text-xs font-medium text-slate-500">48 / 51 Beds</span>
-            </div>
-            {/* Progress Bar */}
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div className="bg-indigo-600 h-1.5 rounded-full w-[94.2%]" />
-            </div>
+            {loadingSummary ? (
+              <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span>Loading occupancy...</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    {summary?.occupancyRate !== undefined ? `${summary.occupancyRate}%` : "0%"}
+                  </span>
+                  <span className="text-xs font-medium text-slate-500">
+                    {summary?.occupiedBeds ?? 0} / {summary?.totalBeds ?? 0} Beds
+                  </span>
+                </div>
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div
+                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(Math.max(summary?.occupancyRate || 0, 0), 100)}%`,
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Card 2: Revenue */}
@@ -307,14 +458,39 @@ export default function DashboardPage() {
                 <IndianRupee className="w-4 h-4" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">₹1,24,500</span>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                <TrendingUp className="w-3 h-3" />
-                +12%
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">vs. ₹1,11,000 last month</p>
+            {loadingSummary ? (
+              <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                <span>Loading revenue...</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    ₹{Number(summary?.currentMonthRevenue || 0).toLocaleString("en-IN")}
+                  </span>
+                  {summary?.revenueGrowthRate !== undefined && summary?.revenueGrowthRate !== null && (
+                    <span
+                      className={`text-xs font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                        summary.revenueGrowthRate >= 0
+                          ? "text-emerald-600 bg-emerald-50"
+                          : "text-rose-600 bg-rose-50"
+                      }`}
+                    >
+                      <TrendingUp
+                        className={`w-3 h-3 ${summary.revenueGrowthRate < 0 ? "rotate-180" : ""}`}
+                      />
+                      {summary.revenueGrowthRate >= 0
+                        ? `+${summary.revenueGrowthRate}%`
+                        : `${summary.revenueGrowthRate}%`}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  vs. ₹{Number(summary?.lastMonthRevenue || 0).toLocaleString("en-IN")} last month
+                </p>
+              </>
+            )}
           </div>
 
           {/* Card 3: Pending Dues */}
@@ -327,18 +503,30 @@ export default function DashboardPage() {
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl font-bold text-slate-900 tracking-tight">₹18,000</span>
-                <p className="text-xs text-slate-400 mt-0.5">3 unpaid invoices</p>
+            {loadingSummary ? (
+              <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <span>Loading dues...</span>
               </div>
-              <Link
-                href="/dashboard/finance"
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
-              >
-                Collect
-              </Link>
-            </div>
+            ) : (
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    ₹{Number(summary?.totalPendingRent || 0).toLocaleString("en-IN")}
+                  </span>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {summary?.unpaidInvoicesCount || 0} unpaid invoice
+                    {summary?.unpaidInvoicesCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/finance"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
+                >
+                  Collect
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Card 4: Maintenance */}
@@ -351,13 +539,33 @@ export default function DashboardPage() {
                 <Wrench className="w-4 h-4" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">2 Open</span>
-              <span className="text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                1 High Priority
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">Avg resolution: 14 hrs</p>
+            {loadingSummary ? (
+              <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
+                <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                <span>Loading maintenance...</span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                    {summary?.openComplaintsCount || 0} Open
+                  </span>
+                  {summary?.inProgressComplaintsCount > 0 ? (
+                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                      {summary.inProgressComplaintsCount} In Progress
+                    </span>
+                  ) : summary?.openComplaintsCount === 0 ? (
+                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                      All Clear
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  {summary?.resolvedComplaintsCount ?? 0} resolved ticket
+                  {summary?.resolvedComplaintsCount === 1 ? "" : "s"}
+                </p>
+              </>
+            )}
           </div>
         </section>
       )}

@@ -19,6 +19,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 /**
@@ -71,17 +73,34 @@ public class DashboardServiceImpl implements DashboardService {
         if (totalPendingRent == null) {
             totalPendingRent = BigDecimal.ZERO;
         }
+        int unpaidInvoicesCount = (int) invoiceRepository.countByPropertyIdAndStatusIn(propertyId, pendingStatuses);
 
-        // 3. Open maintenance tickets count
+        // 3. Current and last month revenue
+        YearMonth currentYearMonth = YearMonth.now();
+        LocalDate startOfCurrentMonth = currentYearMonth.atDay(1);
+        LocalDate endOfCurrentMonth = currentYearMonth.atEndOfMonth();
+
+        YearMonth lastYearMonth = currentYearMonth.minusMonths(1);
+        LocalDate startOfLastMonth = lastYearMonth.atDay(1);
+        LocalDate endOfLastMonth = lastYearMonth.atEndOfMonth();
+
+        BigDecimal currentMonthRevenue = invoiceRepository.sumAmountPaidByPropertyIdAndInvoiceDateBetween(
+                propertyId, startOfCurrentMonth, endOfCurrentMonth);
+        if (currentMonthRevenue == null) currentMonthRevenue = BigDecimal.ZERO;
+
+        BigDecimal lastMonthRevenue = invoiceRepository.sumAmountPaidByPropertyIdAndInvoiceDateBetween(
+                propertyId, startOfLastMonth, endOfLastMonth);
+        if (lastMonthRevenue == null) lastMonthRevenue = BigDecimal.ZERO;
+
+        Double revenueGrowthRate = calculateGrowthRate(currentMonthRevenue, lastMonthRevenue);
+
+        // 4. Maintenance tickets count
         int openComplaints = (int) complaintRepository.countByPropertyIdAndStatus(propertyId, ComplaintStatus.OPEN);
+        int inProgressComplaints = (int) complaintRepository.countByPropertyIdAndStatus(propertyId, ComplaintStatus.IN_PROGRESS);
+        int resolvedComplaints = (int) complaintRepository.countByPropertyIdAndStatus(propertyId, ComplaintStatus.RESOLVED);
 
-        // 4. Calculate occupancy percentage
-        double occupancyRate = 0.0;
-        if (totalBeds > 0) {
-            occupancyRate = BigDecimal.valueOf((double) occupiedBeds / totalBeds * 100.0)
-                    .setScale(1, RoundingMode.HALF_UP)
-                    .doubleValue();
-        }
+        // 5. Calculate occupancy percentage
+        double occupancyRate = calculateOccupancyRate(totalBeds, occupiedBeds);
 
         return DashboardSummaryResponse.builder()
                 .propertyId(property.getId())
@@ -91,8 +110,122 @@ public class DashboardServiceImpl implements DashboardService {
                 .vacantBeds(vacantBeds)
                 .maintenanceBeds(maintenanceBeds)
                 .totalPendingRent(totalPendingRent)
+                .unpaidInvoicesCount(unpaidInvoicesCount)
+                .currentMonthRevenue(currentMonthRevenue)
+                .lastMonthRevenue(lastMonthRevenue)
+                .revenueGrowthRate(revenueGrowthRate)
                 .openComplaintsCount(openComplaints)
+                .inProgressComplaintsCount(inProgressComplaints)
+                .resolvedComplaintsCount(resolvedComplaints)
                 .occupancyRate(occupancyRate)
                 .build();
+    }
+
+    @Override
+    public DashboardSummaryResponse getOwnerSummary(String userEmail, boolean isSuperAdmin) {
+        User caller = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userEmail));
+
+        Long ownerId = caller.getId();
+        int totalBeds;
+        int occupiedBeds;
+        int vacantBeds;
+        int maintenanceBeds;
+        BigDecimal totalPendingRent;
+        int unpaidInvoicesCount;
+        BigDecimal currentMonthRevenue;
+        BigDecimal lastMonthRevenue;
+        int openComplaints;
+        int inProgressComplaints;
+        int resolvedComplaints;
+
+        List<InvoiceStatus> pendingStatuses = List.of(InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID);
+
+        YearMonth currentYearMonth = YearMonth.now();
+        LocalDate startOfCurrentMonth = currentYearMonth.atDay(1);
+        LocalDate endOfCurrentMonth = currentYearMonth.atEndOfMonth();
+
+        YearMonth lastYearMonth = currentYearMonth.minusMonths(1);
+        LocalDate startOfLastMonth = lastYearMonth.atDay(1);
+        LocalDate endOfLastMonth = lastYearMonth.atEndOfMonth();
+
+        if (isSuperAdmin) {
+            totalBeds = (int) bedRepository.count();
+            occupiedBeds = (int) bedRepository.countAllByStatus(BedStatus.OCCUPIED);
+            vacantBeds = (int) bedRepository.countAllByStatus(BedStatus.VACANT);
+            maintenanceBeds = (int) bedRepository.countAllByStatus(BedStatus.MAINTENANCE);
+
+            totalPendingRent = invoiceRepository.sumOutstandingDuesAllAndStatusIn(pendingStatuses);
+            unpaidInvoicesCount = (int) invoiceRepository.countAllByStatusIn(pendingStatuses);
+
+            currentMonthRevenue = invoiceRepository.sumAmountPaidAllAndInvoiceDateBetween(startOfCurrentMonth, endOfCurrentMonth);
+            lastMonthRevenue = invoiceRepository.sumAmountPaidAllAndInvoiceDateBetween(startOfLastMonth, endOfLastMonth);
+
+            openComplaints = (int) complaintRepository.countByStatus(ComplaintStatus.OPEN);
+            inProgressComplaints = (int) complaintRepository.countByStatus(ComplaintStatus.IN_PROGRESS);
+            resolvedComplaints = (int) complaintRepository.countByStatus(ComplaintStatus.RESOLVED);
+        } else {
+            totalBeds = (int) bedRepository.countByRoomPropertyOwnerId(ownerId);
+            occupiedBeds = (int) bedRepository.countByRoomPropertyOwnerIdAndStatus(ownerId, BedStatus.OCCUPIED);
+            vacantBeds = (int) bedRepository.countByRoomPropertyOwnerIdAndStatus(ownerId, BedStatus.VACANT);
+            maintenanceBeds = (int) bedRepository.countByRoomPropertyOwnerIdAndStatus(ownerId, BedStatus.MAINTENANCE);
+
+            totalPendingRent = invoiceRepository.sumOutstandingDuesByOwnerIdAndStatusIn(ownerId, pendingStatuses);
+            unpaidInvoicesCount = (int) invoiceRepository.countByOwnerIdAndStatusIn(ownerId, pendingStatuses);
+
+            currentMonthRevenue = invoiceRepository.sumAmountPaidByOwnerIdAndInvoiceDateBetween(ownerId, startOfCurrentMonth, endOfCurrentMonth);
+            lastMonthRevenue = invoiceRepository.sumAmountPaidByOwnerIdAndInvoiceDateBetween(ownerId, startOfLastMonth, endOfLastMonth);
+
+            openComplaints = (int) complaintRepository.countByPropertyOwnerIdAndStatus(ownerId, ComplaintStatus.OPEN);
+            inProgressComplaints = (int) complaintRepository.countByPropertyOwnerIdAndStatus(ownerId, ComplaintStatus.IN_PROGRESS);
+            resolvedComplaints = (int) complaintRepository.countByPropertyOwnerIdAndStatus(ownerId, ComplaintStatus.RESOLVED);
+        }
+
+        if (totalPendingRent == null) totalPendingRent = BigDecimal.ZERO;
+        if (currentMonthRevenue == null) currentMonthRevenue = BigDecimal.ZERO;
+        if (lastMonthRevenue == null) lastMonthRevenue = BigDecimal.ZERO;
+
+        Double revenueGrowthRate = calculateGrowthRate(currentMonthRevenue, lastMonthRevenue);
+        double occupancyRate = calculateOccupancyRate(totalBeds, occupiedBeds);
+
+        return DashboardSummaryResponse.builder()
+                .propertyId(null)
+                .propertyName(isSuperAdmin ? "All Properties (System)" : "All Properties (" + caller.getName() + ")")
+                .totalBeds(totalBeds)
+                .occupiedBeds(occupiedBeds)
+                .vacantBeds(vacantBeds)
+                .maintenanceBeds(maintenanceBeds)
+                .totalPendingRent(totalPendingRent)
+                .unpaidInvoicesCount(unpaidInvoicesCount)
+                .currentMonthRevenue(currentMonthRevenue)
+                .lastMonthRevenue(lastMonthRevenue)
+                .revenueGrowthRate(revenueGrowthRate)
+                .openComplaintsCount(openComplaints)
+                .inProgressComplaintsCount(inProgressComplaints)
+                .resolvedComplaintsCount(resolvedComplaints)
+                .occupancyRate(occupancyRate)
+                .build();
+    }
+
+    private Double calculateGrowthRate(BigDecimal current, BigDecimal last) {
+        if (last != null && last.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal diff = current.subtract(last);
+            return diff.divide(last, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .setScale(1, RoundingMode.HALF_UP)
+                    .doubleValue();
+        } else if (current != null && current.compareTo(BigDecimal.ZERO) > 0) {
+            return 100.0;
+        }
+        return 0.0;
+    }
+
+    private double calculateOccupancyRate(int totalBeds, int occupiedBeds) {
+        if (totalBeds > 0) {
+            return BigDecimal.valueOf((double) occupiedBeds / totalBeds * 100.0)
+                    .setScale(1, RoundingMode.HALF_UP)
+                    .doubleValue();
+        }
+        return 0.0;
     }
 }

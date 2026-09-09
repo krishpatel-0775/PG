@@ -232,6 +232,47 @@ public class FinanceServiceImpl implements FinanceService {
     }
 
     /**
+     * Retrieves all invoices (historical and pending) for properties owned by the authenticated owner,
+     * supporting optional status filtering.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getAllOwnerInvoices(String ownerEmail, boolean isSuperAdmin, String status) {
+        User user = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + ownerEmail));
+
+        List<Invoice> invoices;
+        if (status != null && !status.equalsIgnoreCase("ALL") && !status.isBlank()) {
+            if (status.equalsIgnoreCase("PENDING")) {
+                List<InvoiceStatus> pending = List.of(InvoiceStatus.UNPAID, InvoiceStatus.PARTIALLY_PAID);
+                invoices = isSuperAdmin
+                        ? invoiceRepository.findByStatusIn(pending)
+                        : invoiceRepository.findByAllocationBedRoomPropertyOwnerIdAndStatusIn(user.getId(), pending);
+            } else {
+                try {
+                    InvoiceStatus invStatus = InvoiceStatus.valueOf(status.toUpperCase());
+                    invoices = isSuperAdmin
+                            ? invoiceRepository.findByStatus(invStatus)
+                            : invoiceRepository.findByAllocationBedRoomPropertyOwnerIdAndStatusIn(user.getId(), List.of(invStatus));
+                } catch (IllegalArgumentException e) {
+                    invoices = isSuperAdmin
+                            ? invoiceRepository.findAll()
+                            : invoiceRepository.findByAllocationBedRoomPropertyOwnerId(user.getId());
+                }
+            }
+        } else {
+            invoices = isSuperAdmin
+                    ? invoiceRepository.findAll()
+                    : invoiceRepository.findByAllocationBedRoomPropertyOwnerId(user.getId());
+        }
+
+        return invoices.stream()
+                .sorted((a, b) -> Long.compare(b.getId(), a.getId()))
+                .map(InvoiceResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Retrieves all invoices for the authenticated tenant across all allocations.
      */
     @Override

@@ -62,6 +62,21 @@ public class FinanceController {
     }
 
     /**
+     * Retrieves all invoices (historical and active) across properties owned by the authenticated owner.
+     * Supports optional status filter query parameter: ?status=ALL|PAID|UNPAID|PARTIALLY_PAID|PENDING
+     */
+    @GetMapping("/invoices")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<List<InvoiceResponse>> getAllOwnerInvoices(
+            @RequestParam(required = false, defaultValue = "ALL") String status,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        List<InvoiceResponse> invoices = financeService.getAllOwnerInvoices(userEmail, isSuperAdmin, status);
+        return ResponseEntity.ok(invoices);
+    }
+
+    /**
      * Alias endpoint for pending dues (kept for UI compatibility).
      */
     @GetMapping("/invoices/dues")
