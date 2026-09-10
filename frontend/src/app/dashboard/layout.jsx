@@ -22,6 +22,9 @@ import {
   BarChart3,
   Calendar,
 } from "lucide-react";
+import NotificationDropdown from "@/components/NotificationDropdown";
+import ThemeToggle from "@/components/ThemeToggle";
+
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
@@ -46,6 +49,13 @@ export default function DashboardLayout({ children }) {
 
       fetchOpenComplaints(role);
     }
+
+    const handleProfileUpdate = () => {
+      const updatedName = Cookies.get("user_name");
+      if (updatedName) setUserName(updatedName);
+    };
+    window.addEventListener("profile-updated", handleProfileUpdate);
+    return () => window.removeEventListener("profile-updated", handleProfileUpdate);
   }, [router]);
 
   const [openComplaintsCount, setOpenComplaintsCount] = useState(0);
@@ -149,22 +159,22 @@ export default function DashboardLayout({ children }) {
 
       {/* BEGIN: LeftSidebar (Desktop & Mobile Drawer) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200/80 flex flex-col justify-between shrink-0 select-none transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between shrink-0 select-none transition-all duration-300 ease-in-out md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo Header */}
-          <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100">
+          <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
             <Link href="/dashboard" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 dark:shadow-indigo-950 group-hover:scale-105 transition-transform">
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none">
+                <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight leading-none">
                   PGManager
                 </h1>
-                <span className="text-xs font-medium text-slate-400 tracking-wide uppercase mt-1 inline-block">
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500 tracking-wide uppercase mt-1 inline-block">
                   {isTenant ? "Resident Portal" : "Enterprise Hub"}
                 </span>
               </div>
@@ -172,7 +182,7 @@ export default function DashboardLayout({ children }) {
 
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 md:hidden focus:outline-none"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 md:hidden focus:outline-none"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
@@ -181,7 +191,7 @@ export default function DashboardLayout({ children }) {
 
           {/* Navigation Links */}
           <div className="px-4 py-6 flex-1 overflow-y-auto space-y-1">
-            <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Navigation Menu
             </div>
 
@@ -195,18 +205,18 @@ export default function DashboardLayout({ children }) {
                   href={item.href}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition group ${
                     active
-                      ? "bg-indigo-50 text-indigo-600 font-semibold"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100 font-medium"
                   }`}
                 >
                   <Icon
                     className={`w-5 h-5 transition-colors ${
-                      active ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"
+                      active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300"
                     }`}
                   />
                   <span className="flex-1">{item.name}</span>
                   {item.badge && (
-                    <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-700 rounded-full">
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 rounded-full">
                       {item.badge}
                     </span>
                   )}
@@ -216,24 +226,28 @@ export default function DashboardLayout({ children }) {
           </div>
 
           {/* Bottom Profile Section */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold flex items-center justify-center text-sm shadow-sm shrink-0">
+              <Link
+                href="/dashboard/profile"
+                className="flex items-center gap-3 min-w-0 hover:opacity-85 transition cursor-pointer group"
+                title="View & Edit Profile"
+              >
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center text-sm shadow-xs shrink-0 transition-colors">
                   {getInitials(userName)}
                 </div>
                 <div className="leading-tight min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate transition-colors">
                     {userName || "User"}
                   </p>
-                  <p className="text-[11px] font-medium text-slate-500 truncate">
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
                     {formattedRole}
                   </p>
                 </div>
-              </div>
+              </Link>
               <button
                 onClick={handleLogout}
-                className="text-slate-400 hover:text-rose-600 p-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition cursor-pointer"
+                className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 hover:shadow-xs border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition cursor-pointer"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -247,75 +261,75 @@ export default function DashboardLayout({ children }) {
       {/* BEGIN: MainContentArea */}
       <div className="flex-1 flex flex-col min-w-0 md:pl-64">
         {/* Top Header Bar */}
-        <header className="h-20 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 transition-colors">
           <div className="flex items-center gap-4 sm:gap-6">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 md:hidden focus:outline-none"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 md:hidden focus:outline-none"
               aria-label="Open sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             <div>
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-0.5">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium mb-0.5">
                 <span>PGManager</span>
                 <span>/</span>
-                <span className="text-slate-900">Dashboard</span>
+                <span className="text-slate-900 dark:text-slate-200">Dashboard</span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                 Property Management System
               </h2>
             </div>
           </div>
 
-          {/* Search and Top Right Profile */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Search and Top Right Actions */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {/* Search Bar */}
-            <div className="relative w-48 sm:w-72 lg:w-80 hidden md:block">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <div className="relative w-44 sm:w-64 lg:w-72 hidden md:block">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                 <Search className="w-4 h-4" />
               </span>
               <input
-                className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white text-slate-800 placeholder-slate-400 transition"
+                className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition"
                 placeholder="Search tenants, rooms, invoices..."
                 type="text"
               />
             </div>
 
-            {/* Notification Bell */}
-            <button
-              type="button"
-              className="relative p-2.5 text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-sm cursor-pointer"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
-            </button>
+            {/* Theme Toggle Button */}
+            <ThemeToggle />
+
+            {/* Notification Bell Dropdown */}
+            <NotificationDropdown />
 
             {/* Divider */}
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
             {/* User Badge Status */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-slate-50 border border-slate-200/80 rounded-full py-1.5 pl-2 pr-3 sm:pr-4 shadow-sm">
-              <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <Link
+              href="/dashboard/profile"
+              className="flex items-center gap-2 sm:gap-3 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50/60 dark:hover:bg-slate-700/60 border border-slate-200/80 dark:border-slate-700 rounded-full py-1.5 pl-2 pr-3 sm:pr-4 shadow-xs transition-all cursor-pointer group"
+              title="Manage Account Profile"
+            >
+              <div className="w-7 h-7 rounded-full bg-indigo-600 group-hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center shrink-0 transition-colors shadow-xs">
                 {userName ? userName[0].toUpperCase() : "U"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-900 hidden sm:inline-block">
+                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors hidden sm:inline-block">
                   {userName}
                 </span>
-                <span className="text-[10px] font-medium bg-slate-200/70 text-slate-700 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] font-medium bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded">
                   {formattedRole}
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" title="Active Session" />
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 
         {/* Dashboard Body Content */}
-        <main className="flex-1 overflow-y-auto bg-slate-50">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-colors">{children}</main>
       </div>
       {/* END: MainContentArea */}
     </div>

@@ -23,6 +23,7 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
@@ -106,21 +107,26 @@ export default function PartnerWithUsPage() {
   };
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-screen selection:bg-indigo-500 selection:text-white antialiased">
+    <div className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen selection:bg-indigo-500 selection:text-white antialiased transition-colors relative">
+      {/* Top right ThemeToggle */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+        <ThemeToggle />
+      </div>
+
       {/* Main Container */}
       <main className="min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 max-w-[1536px] mx-auto flex items-center justify-center">
         {/* 2-Column Responsive Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 w-full items-start">
           {/* LEFT COLUMN: Value Proposition & Platform Brand */}
-          <section className="lg:col-span-6 xl:col-span-5 bg-gradient-to-b from-indigo-50/70 via-slate-100/60 to-indigo-50/40 border border-slate-200/90 rounded-3xl p-8 sm:p-10 lg:p-12 flex flex-col justify-between shadow-sm relative overflow-hidden">
+          <section className="lg:col-span-6 xl:col-span-5 bg-gradient-to-b from-indigo-50/70 via-slate-100/60 to-indigo-50/40 dark:from-slate-900/90 dark:via-slate-900/60 dark:to-slate-900/40 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-8 sm:p-10 lg:p-12 flex flex-col justify-between shadow-sm relative overflow-hidden">
             {/* Decorative Ambient Blur Background Elements */}
             <div
               aria-hidden="true"
-              className="absolute -top-24 -left-24 w-72 h-72 bg-indigo-200/40 rounded-full blur-3xl pointer-events-none"
+              className="absolute -top-24 -left-24 w-72 h-72 bg-indigo-200/40 dark:bg-indigo-900/20 rounded-full blur-3xl pointer-events-none"
             />
             <div
               aria-hidden="true"
-              className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-200/30 rounded-full blur-3xl pointer-events-none"
+              className="absolute -bottom-20 -right-20 w-80 h-80 bg-blue-200/30 dark:bg-blue-900/20 rounded-full blur-3xl pointer-events-none"
             />
 
             <div className="relative z-10 space-y-8">
@@ -129,8 +135,8 @@ export default function PartnerWithUsPage() {
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-600/25 group-hover:scale-105 transition-transform">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xl font-bold tracking-tight text-slate-900">
-                  PG<span className="text-indigo-600">Master</span>
+                <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  PG<span className="text-indigo-600 dark:text-indigo-400">Master</span>
                 </span>
               </Link>
 
@@ -211,13 +217,13 @@ export default function PartnerWithUsPage() {
 
           {/* RIGHT COLUMN: Registration Form */}
           <section className="lg:col-span-6 xl:col-span-7">
-            <div className="bg-white shadow-xl shadow-slate-200/50 border border-slate-200/80 rounded-3xl p-6 sm:p-8 md:p-10">
+            <div className="bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 md:p-10 transition-colors">
               {/* Form Header */}
-              <div className="mb-8 border-b border-slate-100 pb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-6">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                   List Your PG &amp; Create Account
                 </h2>
-                <p className="text-sm text-slate-500 mt-1.5">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
                   Set up your PG property and owner profile in less than 2 minutes.
                 </p>
               </div>

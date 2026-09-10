@@ -24,13 +24,16 @@ public class OnboardingServiceImpl implements OnboardingService {
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.backend.communication.service.NotificationService notificationService;
 
     public OnboardingServiceImpl(UserRepository userRepository,
                                  PropertyRepository propertyRepository,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder,
+                                 com.example.backend.communication.service.NotificationService notificationService) {
         this.userRepository = userRepository;
         this.propertyRepository = propertyRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -76,6 +79,9 @@ public class OnboardingServiceImpl implements OnboardingService {
                 .build();
 
         Property savedProperty = propertyRepository.save(property);
+
+        // Dispatch welcome onboarding notification to PG Owner asynchronously
+        notificationService.sendWelcomeNotification(savedOwner, "PG_OWNER", null);
 
         // 5. Construct and return summary response
         return PropertyOnboardingResponse.builder()

@@ -16,6 +16,7 @@ import {
   Building2,
   Loader2,
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function RegisterPage() {
         err.response?.data?.error ||
         (typeof err.response?.data === "string" ? err.response.data : null) ||
         err.message ||
-        "Registration failed. Please verify your information and try again.";
+        "Failed to create account. Please check your details and try again.";
 
       setErrorMessage(backendMessage);
     } finally {
@@ -75,41 +76,46 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col justify-center py-10 sm:py-14 px-4 sm:px-6 lg:px-8 bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white relative"
+      className="min-h-screen flex flex-col justify-center py-10 sm:py-14 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 antialiased selection:bg-indigo-500 selection:text-white relative transition-colors"
       style={{
         backgroundImage:
           "radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 65%), radial-gradient(at 100% 0%, rgba(147, 197, 253, 0.06) 0px, transparent 40%)",
       }}
     >
+      {/* Top right ThemeToggle */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Platform brand logo and title */}
       <header className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
         <Link
           href="/"
           className="inline-flex items-center gap-2.5 group transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1"
         >
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 group-hover:bg-indigo-700 transition-colors">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 dark:shadow-indigo-950 group-hover:bg-indigo-700 transition-colors">
             <Building2 className="w-5 h-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900">
-            PG<span className="text-indigo-600">Manager</span>
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            PG<span className="text-indigo-600 dark:text-indigo-400">Manager</span>
           </span>
         </Link>
       </header>
 
       {/* Main Authentication Card */}
       <main className="w-full max-w-md mx-auto">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-7 sm:p-9 relative overflow-hidden backdrop-blur-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-7 sm:p-9 relative overflow-hidden backdrop-blur-sm">
           {/* Top Squircle Card Header */}
           <div className="flex flex-col items-center mb-7">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner mb-4 transition-transform hover:scale-105 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner mb-4 transition-transform hover:scale-105 duration-200">
               <Building2 className="w-7 h-7" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight text-center">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight text-center">
               Create an Account
             </h1>
-            <p className="text-slate-500 text-sm text-center mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
+            <p className="text-slate-500 dark:text-slate-400 text-sm text-center mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
               <span>Join the PG Management platform as a resident.</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 Resident
               </span>
             </p>
@@ -119,7 +125,7 @@ export default function RegisterPage() {
           {errorMessage && (
             <div
               role="alert"
-              className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-2.5 text-xs font-medium animate-in fade-in duration-200"
+              className="mb-5 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 flex items-start gap-2.5 text-xs font-medium animate-in fade-in duration-200"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" />
               <div className="flex-1 leading-relaxed">{errorMessage}</div>
@@ -132,12 +138,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="name"
-                className="block text-xs font-semibold text-slate-700 tracking-wide uppercase mb-1.5"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide uppercase mb-1.5"
               >
                 Full Name
               </label>
               <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                   <User className="w-5 h-5" />
                 </div>
                 <input
@@ -148,7 +154,7 @@ export default function RegisterPage() {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
                 />
               </div>
             </div>
@@ -157,12 +163,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-xs font-semibold text-slate-700 tracking-wide uppercase mb-1.5"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide uppercase mb-1.5"
               >
                 Email Address
               </label>
               <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                   <Mail className="w-5 h-5" />
                 </div>
                 <input
@@ -174,7 +180,7 @@ export default function RegisterPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="name@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
                 />
               </div>
             </div>
@@ -183,12 +189,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs font-semibold text-slate-700 tracking-wide uppercase mb-1.5"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide uppercase mb-1.5"
               >
                 Password
               </label>
               <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
@@ -201,13 +207,13 @@ export default function RegisterPage() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Minimum 6 characters"
-                  className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
+                  className="w-full pl-11 pr-11 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -218,12 +224,12 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="phone"
-                className="block text-xs font-semibold text-slate-700 tracking-wide uppercase mb-1.5"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 tracking-wide uppercase mb-1.5"
               >
                 Phone Number
               </label>
               <div className="relative rounded-xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
                   <Phone className="w-5 h-5" />
                 </div>
                 <input
@@ -233,7 +239,7 @@ export default function RegisterPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+91 98765 43210"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm font-medium focus:outline-none"
                 />
               </div>
             </div>
@@ -243,7 +249,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-150 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold py-3.5 px-4 rounded-xl shadow-md shadow-indigo-200 dark:shadow-indigo-950 hover:shadow-indigo-300 transition-all duration-150 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -261,12 +267,12 @@ export default function RegisterPage() {
           </form>
 
           {/* Card Footer Navigation */}
-          <footer className="mt-7 pt-6 border-t border-slate-100 text-center space-y-3.5">
-            <p className="text-sm text-slate-600">
+          <footer className="mt-7 pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-3.5">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Already have an account?{" "}
               <Link
                 href="/login"
-                className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline inline-flex items-center gap-1 group"
+                className="font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline inline-flex items-center gap-1 group"
               >
                 <span>Sign In</span>
                 <span className="inline-block transition-transform duration-150 group-hover:translate-x-0.5">
@@ -274,11 +280,11 @@ export default function RegisterPage() {
                 </span>
               </Link>
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Are you a PG Owner?{" "}
               <Link
                 href="/partner-with-us"
-                className="font-semibold text-slate-700 hover:text-indigo-600 underline underline-offset-2 transition-colors"
+                className="font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 underline underline-offset-2 transition-colors"
               >
                 List Your PG Here
               </Link>
@@ -288,21 +294,21 @@ export default function RegisterPage() {
       </main>
 
       {/* Legal & Meta Links */}
-      <aside className="mt-8 text-center text-xs text-slate-400 max-w-md mx-auto space-y-2">
+      <aside className="mt-8 text-center text-xs text-slate-400 dark:text-slate-500 max-w-md mx-auto space-y-2">
         <div className="flex items-center justify-center gap-3 sm:gap-4">
-          <a href="#" className="hover:text-slate-600 transition-colors">
+          <a href="#" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
             Terms of Service
           </a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-600 transition-colors">
+          <a href="#" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
             Privacy Policy
           </a>
           <span>•</span>
-          <a href="#" className="hover:text-slate-600 transition-colors">
+          <a href="#" className="hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
             Help Center
           </a>
         </div>
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500">
           PGManager Cloud Technologies Inc. © 2025. All rights reserved.
         </p>
       </aside>

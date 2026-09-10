@@ -47,15 +47,18 @@ public class FinanceServiceImpl implements FinanceService {
     private final PaymentRepository paymentRepository;
     private final AllocationRepository allocationRepository;
     private final UserRepository userRepository;
+    private final com.example.backend.communication.service.NotificationService notificationService;
 
     public FinanceServiceImpl(InvoiceRepository invoiceRepository,
                               PaymentRepository paymentRepository,
                               AllocationRepository allocationRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              com.example.backend.communication.service.NotificationService notificationService) {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.allocationRepository = allocationRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -106,6 +109,9 @@ public class FinanceServiceImpl implements FinanceService {
 
                     Invoice savedInvoice = invoiceRepository.save(invoice);
                     generatedInvoices.add(savedInvoice);
+
+                    // Dispatch invoice generated notification asynchronously
+                    notificationService.sendInvoiceGeneratedNotification(savedInvoice);
 
                     log.info("Generated anniversary invoice ID {} for allocation ID {} (Tenant: {}, Amount: ₹{})",
                             savedInvoice.getId(),
@@ -165,6 +171,9 @@ public class FinanceServiceImpl implements FinanceService {
 
         invoiceRepository.save(invoice);
 
+        // Dispatch payment receipt notification asynchronously
+        notificationService.sendPaymentReceiptNotification(invoice, savedPayment);
+
         log.info("Recorded manual payment ID {} of ₹{} for Invoice ID {}. New status: {}",
                 savedPayment.getId(), request.getAmount(), invoice.getId(), invoice.getStatus());
 
@@ -204,6 +213,9 @@ public class FinanceServiceImpl implements FinanceService {
         invoice.setAmountPaid(totalAmount);
         invoice.setStatus(InvoiceStatus.PAID);
         invoiceRepository.save(invoice);
+
+        // Dispatch payment receipt notification asynchronously
+        notificationService.sendPaymentReceiptNotification(invoice, savedPayment);
 
         log.info("Processed mock online payment ID {} of ₹{} for Invoice ID {}. Invoice marked PAID.",
                 savedPayment.getId(), paymentAmount, invoice.getId());

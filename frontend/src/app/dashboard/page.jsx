@@ -23,6 +23,7 @@ import {
   Clock,
   KeyRound,
   ArrowRight,
+  Plus,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -191,19 +192,35 @@ export default function DashboardPage() {
     setLoadingNotices(true);
     try {
       if (role === "ROLE_TENANT") {
-        const allocationRes = await api.get("/allocations/my");
-        if (allocationRes.data && allocationRes.data.propertyId) {
-          const noticeRes = await api.get(`/notices/property/${allocationRes.data.propertyId}`);
-          setNotices(noticeRes.data || []);
-        } else {
+        try {
+          const allocationRes = await api.get("/allocations/my");
+          if (allocationRes.data && allocationRes.data.propertyId) {
+            const noticeRes = await api.get(`/notices/property/${allocationRes.data.propertyId}`);
+            setNotices(noticeRes.data || []);
+          } else {
+            setNotices([]);
+          }
+        } catch {
           setNotices([]);
         }
       } else {
         const propRes = await api.get("/properties");
-        if (propRes.data && propRes.data.length > 0) {
-          const firstPropId = propRes.data[0].id;
-          const noticeRes = await api.get(`/notices/property/${firstPropId}`);
-          setNotices(noticeRes.data || []);
+        const props = propRes.data || [];
+        if (props.length > 0) {
+          const allPromises = props.map((p) =>
+            api
+              .get(`/notices/property/${p.id}`)
+              .then((res) =>
+                (res.data || []).map((n) => ({ ...n, propertyName: p.name }))
+              )
+              .catch(() => [])
+          );
+          const results = await Promise.all(allPromises);
+          const combined = results.flat();
+          combined.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setNotices(combined);
         } else {
           setNotices([]);
         }
@@ -223,7 +240,7 @@ export default function DashboardPage() {
         return {
           label: "PG Owner",
           description: "Full property, room allocation, billing, and notice broadcast access",
-          badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
+          badgeColor: "bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/80",
           icon: Shield,
           features: [
             {
@@ -268,7 +285,7 @@ export default function DashboardPage() {
         return {
           label: "Staff / Support",
           description: "Facility maintenance, cleaning schedules, and service operations",
-          badgeColor: "bg-emerald-50 text-emerald-800 border-emerald-200",
+          badgeColor: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80",
           icon: Wrench,
           features: [
             {
@@ -294,7 +311,7 @@ export default function DashboardPage() {
         return {
           label: "Resident",
           description: "Room booking, rent dues, and maintenance ticket portal",
-          badgeColor: "bg-indigo-50 text-indigo-800 border-indigo-200",
+          badgeColor: "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/80",
           icon: UserCheck,
           features: [
             {
@@ -320,36 +337,16 @@ export default function DashboardPage() {
     }
   };
 
-  // Sample fallback notices if database has none
-  const defaultSampleNotices = [
-    {
-      id: "sample-1",
-      createdAt: new Date().toISOString(),
-      createdBy: userName || "Krish Patel",
-      title: "Overhead Water Tank Cleaning Schedule",
-      content:
-        "Water supply will be paused for Tower B between 10:00 AM and 2:00 PM for biannual filtration and sanitization. Please store water beforehand.",
-    },
-    {
-      id: "sample-2",
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-      createdBy: userName || "Krish Patel",
-      title: "Diwali Festive High-Tea & Gathering",
-      content:
-        "All residents and staying tenants are cordially invited to the common lounge on Sunday evening for celebration sweets and celebrations.",
-    },
-  ];
-
-  const displayedNotices =
-    notices && notices.length > 0 ? notices.slice(0, 2) : defaultSampleNotices;
+  // Only display real notices fetched from the database
+  const displayedNotices = Array.isArray(notices) ? notices.slice(0, 4) : [];
 
   // Prevent flash while checking auth
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 text-slate-800">
+      <div className="min-h-[60vh] flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-          <p className="text-xs font-medium text-slate-500">Loading dashboard...</p>
+          <div className="w-10 h-10 border-4 border-indigo-200 dark:border-indigo-900 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -362,9 +359,9 @@ export default function DashboardPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto w-full pb-16">
       {/* BEGIN: WelcomeBanner */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-sm relative overflow-hidden">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-7 shadow-sm relative overflow-hidden transition-colors">
         {/* Subtle Accent Background Blur */}
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-indigo-50 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -right-16 -top-16 w-64 h-64 bg-indigo-50 dark:bg-indigo-950/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-0">
           <div className="space-y-2.5">
@@ -375,30 +372,30 @@ export default function DashboardPage() {
                 <RoleIcon className="w-3.5 h-3.5" />
                 {roleConfig.label.toUpperCase()}
               </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/70">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 ACTIVE SESSION
               </span>
             </div>
 
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Welcome back, {userName}!
             </h1>
-            <p className="text-sm text-slate-500 max-w-2xl font-normal">
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl font-normal">
               {roleConfig.description}. Monitor high-level PG metrics and manage live occupancies with ease.
             </p>
           </div>
 
           {/* Role Badge Pill */}
-          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/90 rounded-xl p-4 shrink-0 shadow-inner">
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-4 shrink-0 shadow-inner">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
               <RoleIcon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Authenticated Role
               </p>
-              <p className="text-sm font-bold text-slate-800 tracking-wide font-mono">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200 tracking-wide font-mono">
                 {userRole}
               </p>
             </div>
@@ -411,34 +408,34 @@ export default function DashboardPage() {
       {isOwner && (
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Card 1: Occupancy */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Occupancy
               </span>
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                 <Building2 className="w-4 h-4" />
               </div>
             </div>
             {loadingSummary ? (
               <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400" />
                 <span>Loading occupancy...</span>
               </div>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     {summary?.occupancyRate !== undefined ? `${summary.occupancyRate}%` : "0%"}
                   </span>
-                  <span className="text-xs font-medium text-slate-500">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                     {summary?.occupiedBeds ?? 0} / {summary?.totalBeds ?? 0} Beds
                   </span>
                 </div>
                 {/* Progress Bar */}
-                <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
                   <div
-                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                    className="bg-indigo-600 dark:bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
                     style={{
                       width: `${Math.min(Math.max(summary?.occupancyRate || 0, 0), 100)}%`,
                     }}
@@ -449,32 +446,32 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 2: Revenue */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Current Month Revenue
               </span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <IndianRupee className="w-4 h-4" />
               </div>
             </div>
             {loadingSummary ? (
               <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
                 <span>Loading revenue...</span>
               </div>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     ₹{Number(summary?.currentMonthRevenue || 0).toLocaleString("en-IN")}
                   </span>
                   {summary?.revenueGrowthRate !== undefined && summary?.revenueGrowthRate !== null && (
                     <span
                       className={`text-xs font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
                         summary.revenueGrowthRate >= 0
-                          ? "text-emerald-600 bg-emerald-50"
-                          : "text-rose-600 bg-rose-50"
+                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60"
+                          : "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60"
                       }`}
                     >
                       <TrendingUp
@@ -486,7 +483,7 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                   vs. ₹{Number(summary?.lastMonthRevenue || 0).toLocaleString("en-IN")} last month
                 </p>
               </>
@@ -494,34 +491,34 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 3: Pending Dues */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Pending Dues
               </span>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
             {loadingSummary ? (
               <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600 dark:text-amber-400" />
                 <span>Loading dues...</span>
               </div>
             ) : (
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     ₹{Number(summary?.totalPendingRent || 0).toLocaleString("en-IN")}
                   </span>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                     {summary?.unpaidInvoicesCount || 0} unpaid invoice
                     {summary?.unpaidInvoicesCount === 1 ? "" : "s"}
                   </p>
                 </div>
                 <Link
                   href="/dashboard/finance"
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition"
+                  className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 px-2 py-1 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition"
                 >
                   Collect
                 </Link>
@@ -530,37 +527,37 @@ export default function DashboardPage() {
           </div>
 
           {/* Card 4: Maintenance */}
-          <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Maintenance
               </span>
-              <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center">
                 <Wrench className="w-4 h-4" />
               </div>
             </div>
             {loadingSummary ? (
               <div className="py-3 flex items-center gap-2 text-slate-400 text-xs">
-                <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-rose-600 dark:text-rose-400" />
                 <span>Loading maintenance...</span>
               </div>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                     {summary?.openComplaintsCount || 0} Open
                   </span>
                   {summary?.inProgressComplaintsCount > 0 ? (
-                    <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/80 px-1.5 py-0.5 rounded">
                       {summary.inProgressComplaintsCount} In Progress
                     </span>
                   ) : summary?.openComplaintsCount === 0 ? (
-                    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800/80 px-1.5 py-0.5 rounded">
                       All Clear
                     </span>
                   ) : null}
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                   {summary?.resolvedComplaintsCount ?? 0} resolved ticket
                   {summary?.resolvedComplaintsCount === 1 ? "" : "s"}
                 </p>
@@ -572,15 +569,15 @@ export default function DashboardPage() {
       {/* END: MetricsBar */}
 
       {/* BEGIN: AnnouncementsWidget */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm transition-colors">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
               <Megaphone className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Recent Announcements</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Announcements</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Latest building updates and notices broadcasted to residents
               </p>
             </div>
@@ -589,7 +586,7 @@ export default function DashboardPage() {
           {isOwner && (
             <Link
               href="/dashboard/announcements"
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 group"
             >
               Manage Board
               <span className="group-hover:translate-x-0.5 transition-transform">→</span>
@@ -600,29 +597,54 @@ export default function DashboardPage() {
         {/* Notice Cards Grid */}
         {loadingNotices ? (
           <div className="py-8 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
-            <p className="text-xs text-slate-400">Loading notices...</p>
+            <Loader2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-spin" />
+            <p className="text-xs text-slate-400 dark:text-slate-500">Loading notices...</p>
+          </div>
+        ) : displayedNotices.length === 0 ? (
+          <div className="py-8 px-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-850/40">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100/80 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 shadow-xs">
+              <Megaphone className="w-5 h-5 opacity-70" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">No Announcements Yet</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+              {isOwner
+                ? "Broadcast important updates, maintenance schedules, or community notices to your residents."
+                : "Your property manager has not broadcasted any active announcements at this time."}
+            </p>
+            {isOwner && (
+              <Link
+                href="/dashboard/announcements"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Post First Announcement
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {displayedNotices.map((n) => (
               <div
                 key={n.id}
-                className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 hover:border-slate-300 hover:bg-slate-50 transition"
+                className="bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-4 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition"
               >
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                  <span className="flex items-center gap-1.5 font-medium text-slate-600">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {new Date(n.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  <span className="flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                    {n.createdAt
+                      ? new Date(n.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Recently"}
                   </span>
-                  <span className="text-slate-400">by {n.createdBy}</span>
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">
+                    {n.propertyName || (n.createdBy ? `by ${n.createdBy}` : "Notice Board")}
+                  </span>
                 </div>
-                <h4 className="text-sm font-semibold text-slate-900 mb-1">{n.title}</h4>
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{n.content}</p>
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{n.title}</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{n.content}</p>
               </div>
             ))}
           </div>
@@ -633,10 +655,10 @@ export default function DashboardPage() {
       {/* BEGIN: QuickActionsGrid */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span className="text-indigo-600">✨</span> Quick Actions &amp; Modules
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span className="text-indigo-600 dark:text-indigo-400">✨</span> Quick Actions &amp; Modules
           </h3>
-          <span className="text-xs text-slate-400">Select any workspace module below</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Select any workspace module below</span>
         </div>
 
         {/* 6-Card Grid */}
@@ -644,21 +666,21 @@ export default function DashboardPage() {
           {roleConfig.features.map((feature, idx) => {
             const FeatureIcon = feature.icon;
             const CardContent = (
-              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-indigo-200 hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group h-full">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800/80 hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group h-full">
                 <div>
-                  <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-105 transition-transform">
+                  <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-4 group-hover:scale-105 transition-transform">
                     <FeatureIcon className="w-6 h-6" />
                   </div>
-                  <h4 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-indigo-600 transition-colors">
+                  <h4 className="text-base font-bold text-slate-900 dark:text-white mb-1.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     {feature.title}
                   </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-6">{feature.desc}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{feature.desc}</p>
                 </div>
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded">
                     Active Module
                   </span>
-                  <span className="font-medium text-slate-500 group-hover:text-indigo-600 flex items-center gap-1">
+                  <span className="font-medium text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 flex items-center gap-1">
                     Explore <span className="group-hover:translate-x-1 transition-transform">→</span>
                   </span>
                 </div>
@@ -681,3 +703,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

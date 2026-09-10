@@ -25,6 +25,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     List<Invoice> findByStatusIn(List<InvoiceStatus> statuses);
 
+    List<Invoice> findByStatusInAndDueDate(List<InvoiceStatus> statuses, LocalDate dueDate);
+
+    List<Invoice> findByStatusInAndDueDateLessThan(List<InvoiceStatus> statuses, LocalDate dueDate);
+
     List<Invoice> findByAllocationTenantId(Long tenantId);
 
     List<Invoice> findByAllocationTenantIdAndStatusIn(Long tenantId, List<InvoiceStatus> statuses);

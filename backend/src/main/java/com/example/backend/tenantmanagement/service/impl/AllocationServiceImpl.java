@@ -36,15 +36,18 @@ public class AllocationServiceImpl implements AllocationService {
     private final BedRepository bedRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.example.backend.communication.service.NotificationService notificationService;
 
     public AllocationServiceImpl(AllocationRepository allocationRepository,
                                  BedRepository bedRepository,
                                  UserRepository userRepository,
-                                 PasswordEncoder passwordEncoder) {
+                                 PasswordEncoder passwordEncoder,
+                                 com.example.backend.communication.service.NotificationService notificationService) {
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -82,17 +85,22 @@ public class AllocationServiceImpl implements AllocationService {
                     ? request.getTenantEmail().trim().toLowerCase()
                     : "shadow-" + UUID.randomUUID() + "@temp.pgmanager.com";
 
+            String rawTempPassword = "Pg@" + UUID.randomUUID().toString().substring(0, 8);
+
             User shadowUser = User.builder()
                     .name(request.getTenantName().trim())
                     .phone(tenantPhone)
                     .email(email)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .password(passwordEncoder.encode(rawTempPassword))
                     .role(Role.ROLE_TENANT)
                     .active(true)
                     .shadowUser(true)
                     .build();
 
             tenant = userRepository.save(shadowUser);
+
+            // Send welcome email with login credentials to the new resident
+            notificationService.sendWelcomeNotification(tenant, "TENANT", rawTempPassword);
         }
 
         // 2. Check if Tenant already has an active allocation

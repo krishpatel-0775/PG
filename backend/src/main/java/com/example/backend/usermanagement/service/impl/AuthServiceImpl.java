@@ -33,15 +33,18 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final com.example.backend.communication.service.NotificationService notificationService;
 
     public AuthServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            AuthenticationManager authenticationManager,
-                           JwtUtils jwtUtils) {
+                           JwtUtils jwtUtils,
+                           com.example.backend.communication.service.NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtUtils = jwtUtils;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -126,6 +129,13 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User savedUser = userRepository.save(userToSave);
+
+        // Dispatch welcome onboarding notification asynchronously
+        notificationService.sendWelcomeNotification(
+                savedUser,
+                savedUser.getRole() != null ? savedUser.getRole().name() : "TENANT",
+                null
+        );
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
