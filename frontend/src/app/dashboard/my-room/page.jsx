@@ -53,12 +53,16 @@ export default function MyRoomPage() {
   const getMinNoticeDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    return d.toISOString().split("T")[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   const getDaysRemaining = (targetDateStr) => {
     if (!targetDateStr) return null;
-    const target = new Date(targetDateStr);
+    // Append T00:00:00 to parse in local timezone rather than UTC
+    const target = new Date(`${targetDateStr}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const diffTime = target - today;

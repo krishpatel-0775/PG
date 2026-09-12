@@ -98,5 +98,25 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
      * Used by the daily billing cron to process both ACTIVE and NOTICE_SERVED allocations.
      */
     List<Allocation> findByStatusIn(List<AllocationStatus> statuses);
+
+    /**
+     * Finds the current resident allocation for a bed matching any of the given statuses (e.g., ACTIVE or NOTICE_SERVED).
+     */
+    Optional<Allocation> findFirstByBedIdAndStatusIn(Long bedId, List<AllocationStatus> statuses);
+
+    /**
+     * Finds the current resident allocation for a tenant matching any of the given statuses (e.g., ACTIVE or NOTICE_SERVED).
+     */
+    Optional<Allocation> findFirstByTenantIdAndStatusIn(Long tenantId, List<AllocationStatus> statuses);
+
+    /**
+     * Finds all allocations for properties owned by a specific PG Owner matching any of the given statuses.
+     */
+    List<Allocation> findByBedRoomPropertyOwnerIdAndStatusIn(Long ownerId, List<AllocationStatus> statuses);
+
+    /**
+     * Checks whether a tenant already has an allocation matching any of the given statuses.
+     */
+    boolean existsByTenantIdAndStatusIn(Long tenantId, List<AllocationStatus> statuses);
 }
 

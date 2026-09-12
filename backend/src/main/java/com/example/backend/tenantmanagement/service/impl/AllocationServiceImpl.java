@@ -38,6 +38,10 @@ public class AllocationServiceImpl implements AllocationService {
     private final PasswordEncoder passwordEncoder;
     private final com.example.backend.communication.service.NotificationService notificationService;
 
+    /** Allocations in either ACTIVE or NOTICE_SERVED status represent current residents. */
+    private static final List<AllocationStatus> RESIDENT_STATUSES =
+            List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED);
+
     public AllocationServiceImpl(AllocationRepository allocationRepository,
                                  BedRepository bedRepository,
                                  UserRepository userRepository,
@@ -130,7 +134,7 @@ public class AllocationServiceImpl implements AllocationService {
         }
 
         // 2. Check if Tenant already has an active allocation
-        if (allocationRepository.existsByTenantIdAndStatus(tenant.getId(), AllocationStatus.ACTIVE)) {
+        if (allocationRepository.existsByTenantIdAndStatusIn(tenant.getId(), RESIDENT_STATUSES)) {
             String identifier = tenant.getEmail() != null ? tenant.getEmail() : tenant.getPhone();
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -227,8 +231,8 @@ public class AllocationServiceImpl implements AllocationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userEmail));
 
         List<Allocation> allocations = isSuperAdmin
-                ? allocationRepository.findByStatus(AllocationStatus.ACTIVE)
-                : allocationRepository.findByBedRoomPropertyOwnerIdAndStatus(user.getId(), AllocationStatus.ACTIVE);
+                ? allocationRepository.findByStatusIn(RESIDENT_STATUSES)
+                : allocationRepository.findByBedRoomPropertyOwnerIdAndStatusIn(user.getId(), RESIDENT_STATUSES);
 
         return allocations.stream()
                 .map(AllocationResponse::fromEntity)
@@ -244,7 +248,7 @@ public class AllocationServiceImpl implements AllocationService {
         User tenant = userRepository.findByEmail(tenantEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenant profile not found: " + tenantEmail));
 
-        Allocation allocation = allocationRepository.findFirstByTenantIdAndStatus(tenant.getId(), AllocationStatus.ACTIVE)
+        Allocation allocation = allocationRepository.findFirstByTenantIdAndStatusIn(tenant.getId(), RESIDENT_STATUSES)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active bed allocation found for your account."));
 
         return AllocationResponse.fromEntity(allocation);
@@ -269,7 +273,7 @@ public class AllocationServiceImpl implements AllocationService {
             }
         }
 
-        Allocation allocation = allocationRepository.findFirstByBedIdAndStatus(bedId, AllocationStatus.ACTIVE)
+        Allocation allocation = allocationRepository.findFirstByBedIdAndStatusIn(bedId, RESIDENT_STATUSES)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active allocation found for Bed ID: " + bedId));
 
         return AllocationResponse.fromEntity(allocation);

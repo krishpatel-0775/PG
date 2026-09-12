@@ -57,9 +57,10 @@ public class ComplaintServiceImpl implements ComplaintService {
         User tenant = userRepository.findByEmail(tenantEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenant profile not found: " + tenantEmail));
 
-        // Infer property from active allocation or provided ID
+        // Infer property from active or notice-served allocation or provided ID
         Property property = null;
-        Optional<Allocation> allocationOpt = allocationRepository.findFirstByTenantIdAndStatus(tenant.getId(), AllocationStatus.ACTIVE);
+        Optional<Allocation> allocationOpt = allocationRepository.findFirstByTenantIdAndStatusIn(
+                tenant.getId(), List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED));
 
         if (allocationOpt.isPresent()) {
             property = allocationOpt.get().getBed().getRoom().getProperty();

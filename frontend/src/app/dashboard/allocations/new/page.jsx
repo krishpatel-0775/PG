@@ -23,7 +23,7 @@ export default function NewAllocationPage() {
   const [formData, setFormData] = useState({
     tenantId: "",
     bedId: "",
-    checkInDate: new Date().toISOString().split("T")[0],
+    checkInDate: new Date().toLocaleDateString("en-CA"),
     depositAmount: "",
     monthlyRent: "",
   });

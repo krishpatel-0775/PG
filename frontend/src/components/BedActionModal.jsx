@@ -18,6 +18,7 @@ import {
   Info,
   Sparkles,
   ShieldCheck,
+  Clock,
 } from "lucide-react";
 
 export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }) {
@@ -35,7 +36,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
     tenantPhone: "",
     tenantName: "",
     tenantEmail: "",
-    checkInDate: new Date().toISOString().split("T")[0],
+    checkInDate: new Date().toLocaleDateString("en-CA"),
     monthlyRent: "",
     depositAmount: "",
   });
@@ -64,7 +65,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
         tenantPhone: "",
         tenantName: "",
         tenantEmail: "",
-        checkInDate: new Date().toISOString().split("T")[0],
+        checkInDate: new Date().toLocaleDateString("en-CA"),
         monthlyRent: room?.baseRent || "",
         depositAmount: room?.baseRent ? room.baseRent : "",
       });
@@ -314,6 +315,25 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                       </div>
                     )}
                   </div>
+
+                  {/* Move-Out Notice Alert if Active */}
+                  {allocation.status === "NOTICE_SERVED" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs">
+                      <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-amber-900 flex items-center gap-2">
+                          <span>Move-Out Notice Active</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-800">
+                            NOTICE SERVED
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 leading-relaxed">
+                          Tenant served notice on <strong>{allocation.noticeServedDate || "recently"}</strong>. Planned move-out date:{" "}
+                          <strong>{allocation.plannedCheckoutDate}</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Financial & Lease Info */}
                   <div className="grid grid-cols-2 gap-3">
