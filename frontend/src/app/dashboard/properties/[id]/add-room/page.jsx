@@ -16,6 +16,19 @@ import {
   Info,
 } from "lucide-react";
 
+const ROOM_SHARING_OPTIONS = [
+  { value: "SINGLE", label: "SINGLE (1 Bed)", count: 1 },
+  { value: "DOUBLE", label: "DOUBLE (2 Beds)", count: 2 },
+  { value: "TRIPLE", label: "TRIPLE (3 Beds)", count: 3 },
+  { value: "FOUR_SHARING", label: "FOUR SHARING (4 Beds)", count: 4 },
+  { value: "FIVE_SHARING", label: "FIVE SHARING (5 Beds)", count: 5 },
+  { value: "SIX_SHARING", label: "SIX SHARING (6 Beds)", count: 6 },
+  { value: "SEVEN_SHARING", label: "SEVEN SHARING (7 Beds)", count: 7 },
+  { value: "EIGHT_SHARING", label: "EIGHT SHARING (8 Beds)", count: 8 },
+  { value: "NINE_SHARING", label: "NINE SHARING (9 Beds)", count: 9 },
+  { value: "TEN_SHARING", label: "TEN SHARING (10 Beds)", count: 10 },
+];
+
 export default function AddRoomPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,18 +92,13 @@ export default function AddRoomPage() {
   };
 
   const getBedCountHint = (type) => {
-    switch (type) {
-      case "SINGLE":
-        return "1 bed will be automatically generated (e.g. 101-A)";
-      case "DOUBLE":
-        return "2 beds will be automatically generated (e.g. 101-A, 101-B)";
-      case "TRIPLE":
-        return "3 beds will be automatically generated (e.g. 101-A, 101-B, 101-C)";
-      case "FOUR_SHARING":
-        return "4 beds will be automatically generated (e.g. 101-A to 101-D)";
-      default:
-        return "";
+    const option = ROOM_SHARING_OPTIONS.find((opt) => opt.value === type);
+    if (!option) return "";
+    if (option.count === 1) {
+      return "1 bed will be automatically generated (e.g. 101-A)";
     }
+    const endLetter = String.fromCharCode(65 + option.count - 1);
+    return `${option.count} beds will be automatically generated (e.g. 101-A to 101-${endLetter})`;
   };
 
   return (
@@ -205,18 +213,11 @@ export default function AddRoomPage() {
                 onChange={handleChange}
                 className="block w-full px-4 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm cursor-pointer"
               >
-                <option value="SINGLE">
-                  SINGLE (1 Bed)
-                </option>
-                <option value="DOUBLE">
-                  DOUBLE (2 Beds)
-                </option>
-                <option value="TRIPLE">
-                  TRIPLE (3 Beds)
-                </option>
-                <option value="FOUR_SHARING">
-                  FOUR SHARING (4 Beds)
-                </option>
+                {ROOM_SHARING_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="mt-2 text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 flex items-center gap-1.5">

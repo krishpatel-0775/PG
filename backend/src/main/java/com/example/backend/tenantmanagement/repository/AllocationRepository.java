@@ -92,4 +92,11 @@ public interface AllocationRepository extends JpaRepository<Allocation, Long> {
     BigDecimal sumMonthlyRentByPropertyIdAndStatus(
             @Param("propertyId") Long propertyId,
             @Param("status") AllocationStatus status);
+
+    /**
+     * Finds all allocations matching any of the provided statuses.
+     * Used by the daily billing cron to process both ACTIVE and NOTICE_SERVED allocations.
+     */
+    List<Allocation> findByStatusIn(List<AllocationStatus> statuses);
 }
+

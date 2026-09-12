@@ -28,7 +28,7 @@ public class CreateRoomRequest {
     @Min(value = 0, message = "Floor number cannot be negative")
     private Integer floor;
 
-    @NotNull(message = "Room type is required (SINGLE, DOUBLE, TRIPLE, FOUR_SHARING)")
+    @NotNull(message = "Room type is required")
     private RoomType roomType;
 
     @NotNull(message = "Base rent is required")

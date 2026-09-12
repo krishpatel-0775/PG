@@ -59,55 +59,82 @@ public class AllocationServiceImpl implements AllocationService {
         User caller = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userEmail));
 
-        String tenantPhone = request.getTenantPhone().trim();
-
-        // 1. Search for existing user by Phone number first, then optional Email
-        Optional<User> existingUserOpt = userRepository.findByPhone(tenantPhone);
-        if (existingUserOpt.isEmpty() && request.getTenantEmail() != null && !request.getTenantEmail().trim().isEmpty()) {
-            existingUserOpt = userRepository.findByEmail(request.getTenantEmail().trim().toLowerCase());
-        }
-
+        // 1. Identify or provision Tenant
         User tenant;
-        if (existingUserOpt.isPresent()) {
-            tenant = existingUserOpt.get();
-            // If user is a shadow user, update their details with newly provided name and email
-            if (tenant.isShadowUser()) {
-                tenant.setName(request.getTenantName().trim());
-                tenant.setPhone(tenantPhone);
-                if (request.getTenantEmail() != null && !request.getTenantEmail().trim().isEmpty()) {
-                    tenant.setEmail(request.getTenantEmail().trim().toLowerCase());
-                }
-                tenant = userRepository.save(tenant);
-            }
+        if (request.getTenantId() != null) {
+            tenant = userRepository.findById(request.getTenantId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tenant not found with ID: " + request.getTenantId()));
         } else {
-            // Provision a new Shadow User linked to this Mobile Number
-            String email = (request.getTenantEmail() != null && !request.getTenantEmail().trim().isEmpty())
+            String tenantEmail = (request.getTenantEmail() != null && !request.getTenantEmail().trim().isEmpty())
                     ? request.getTenantEmail().trim().toLowerCase()
-                    : "shadow-" + UUID.randomUUID() + "@temp.pgmanager.com";
+                    : null;
+            String tenantPhone = (request.getTenantPhone() != null && !request.getTenantPhone().trim().isEmpty())
+                    ? request.getTenantPhone().trim()
+                    : null;
 
-            String rawTempPassword = "Pg@" + UUID.randomUUID().toString().substring(0, 8);
+            if (tenantEmail == null && tenantPhone == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant email address or phone number is required.");
+            }
 
-            User shadowUser = User.builder()
-                    .name(request.getTenantName().trim())
-                    .phone(tenantPhone)
-                    .email(email)
-                    .password(passwordEncoder.encode(rawTempPassword))
-                    .role(Role.ROLE_TENANT)
-                    .active(true)
-                    .shadowUser(true)
-                    .build();
+            // Search by Email first, then by Phone
+            Optional<User> existingUserOpt = Optional.empty();
+            if (tenantEmail != null) {
+                existingUserOpt = userRepository.findByEmail(tenantEmail);
+            }
+            if (existingUserOpt.isEmpty() && tenantPhone != null) {
+                existingUserOpt = userRepository.findByPhone(tenantPhone);
+            }
 
-            tenant = userRepository.save(shadowUser);
+            if (existingUserOpt.isPresent()) {
+                tenant = existingUserOpt.get();
+                // If user is a shadow user, update details with newly provided values
+                if (tenant.isShadowUser()) {
+                    if (request.getTenantName() != null && !request.getTenantName().trim().isEmpty()) {
+                        tenant.setName(request.getTenantName().trim());
+                    }
+                    if (tenantEmail != null) {
+                        tenant.setEmail(tenantEmail);
+                    }
+                    if (tenantPhone != null) {
+                        tenant.setPhone(tenantPhone);
+                    }
+                    tenant = userRepository.save(tenant);
+                }
+            } else {
+                // Provision a new Shadow User linked to this email/phone
+                String email = (tenantEmail != null)
+                        ? tenantEmail
+                        : "shadow-" + UUID.randomUUID() + "@temp.pgmanager.com";
 
-            // Send welcome email with login credentials to the new resident
-            notificationService.sendWelcomeNotification(tenant, "TENANT", rawTempPassword);
+                String name = (request.getTenantName() != null && !request.getTenantName().trim().isEmpty())
+                        ? request.getTenantName().trim()
+                        : "Resident";
+
+                String rawTempPassword = "Pg@" + UUID.randomUUID().toString().substring(0, 8);
+
+                User shadowUser = User.builder()
+                        .name(name)
+                        .phone(tenantPhone)
+                        .email(email)
+                        .password(passwordEncoder.encode(rawTempPassword))
+                        .role(Role.ROLE_TENANT)
+                        .active(true)
+                        .shadowUser(true)
+                        .build();
+
+                tenant = userRepository.save(shadowUser);
+
+                // Send welcome email with login credentials to the new resident
+                notificationService.sendWelcomeNotification(tenant, "TENANT", rawTempPassword);
+            }
         }
 
         // 2. Check if Tenant already has an active allocation
         if (allocationRepository.existsByTenantIdAndStatus(tenant.getId(), AllocationStatus.ACTIVE)) {
+            String identifier = tenant.getEmail() != null ? tenant.getEmail() : tenant.getPhone();
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Tenant '" + tenant.getName() + "' (" + tenant.getPhone() + ") already has an active bed allocation."
+                    "Tenant '" + tenant.getName() + "' (" + identifier + ") already has an active bed allocation."
             );
         }
 

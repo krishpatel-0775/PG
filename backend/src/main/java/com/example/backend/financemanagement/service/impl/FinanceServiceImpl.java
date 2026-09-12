@@ -73,7 +73,8 @@ public class FinanceServiceImpl implements FinanceService {
         LocalDate today = LocalDate.now();
         log.info("Starting daily anniversary billing job for date: {}", today);
 
-        List<Allocation> activeAllocations = allocationRepository.findByStatus(AllocationStatus.ACTIVE);
+        List<Allocation> activeAllocations = allocationRepository.findByStatusIn(
+                List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED));
         List<Invoice> generatedInvoices = new ArrayList<>();
 
         for (Allocation allocation : activeAllocations) {
@@ -99,6 +100,7 @@ public class FinanceServiceImpl implements FinanceService {
                 if (!invoiceRepository.existsByAllocationIdAndInvoiceDate(allocation.getId(), today)) {
                     Invoice invoice = Invoice.builder()
                             .allocation(allocation)
+                            .invoiceType(com.example.backend.financemanagement.entity.InvoiceType.RENT)
                             .invoiceDate(today)
                             .dueDate(today.plusDays(5))
                             .totalAmount(allocation.getMonthlyRent())
@@ -108,6 +110,46 @@ public class FinanceServiceImpl implements FinanceService {
                             .build();
 
                     Invoice savedInvoice = invoiceRepository.save(invoice);
+
+                    // --- NOTICE_SERVED: Auto-pay rent invoice from security deposit ---
+                    if (allocation.getStatus() == AllocationStatus.NOTICE_SERVED) {
+                        BigDecimal rentAmount = allocation.getMonthlyRent();
+                        BigDecimal currentDeposit = allocation.getDepositAmount() != null
+                                ? allocation.getDepositAmount() : BigDecimal.ZERO;
+
+                        // Only offset if deposit balance is sufficient
+                        BigDecimal paymentAmount = rentAmount.min(currentDeposit);
+
+                        if (paymentAmount.compareTo(BigDecimal.ZERO) > 0) {
+                            Payment depositPayment = Payment.builder()
+                                    .invoice(savedInvoice)
+                                    .amount(paymentAmount)
+                                    .paymentDate(today)
+                                    .mode(PaymentMode.SECURITY_DEPOSIT)
+                                    .referenceId("DEPOSIT-OFFSET-" + savedInvoice.getId())
+                                    .remarks("Automated rent offset from security deposit (NOTICE_SERVED)")
+                                    .build();
+                            paymentRepository.save(depositPayment);
+
+                            savedInvoice.setAmountPaid(paymentAmount);
+                            savedInvoice.setStatus(paymentAmount.compareTo(rentAmount) >= 0
+                                    ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID);
+                            invoiceRepository.save(savedInvoice);
+
+                            // Deduct from allocation deposit balance
+                            allocation.setDepositAmount(currentDeposit.subtract(paymentAmount));
+                            allocationRepository.save(allocation);
+
+                            log.info("Deposit-offset payment: allocation={} tenant={} rent=₹{} depositBefore=₹{} depositAfter=₹{}",
+                                    allocation.getId(),
+                                    allocation.getTenant() != null ? allocation.getTenant().getEmail() : "N/A",
+                                    rentAmount, currentDeposit, allocation.getDepositAmount());
+                        } else {
+                            log.warn("Deposit exhausted for NOTICE_SERVED allocation {}. Invoice {} remains UNPAID.",
+                                    allocation.getId(), savedInvoice.getId());
+                        }
+                    }
+
                     generatedInvoices.add(savedInvoice);
 
                     // Dispatch invoice generated notification asynchronously

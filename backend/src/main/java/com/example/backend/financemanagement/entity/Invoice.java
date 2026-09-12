@@ -11,12 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Entity representing a billing invoice generated for a tenant's bed allocation on anniversary billing dates.
+ * Entity representing a billing invoice generated for a tenant's bed allocation.
+ * Supports both anniversary rent invoices ({@link InvoiceType#RENT}) and
+ * prorated utility/electricity invoices ({@link InvoiceType#UTILITY}).
  */
 @Entity
-@Table(name = "invoices", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_invoice_allocation_date", columnNames = {"allocation_id", "invoice_date"})
-})
+@Table(name = "invoices")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,6 +33,16 @@ public class Invoice {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "allocation_id", nullable = false)
     private Allocation allocation;
+
+    /**
+     * Distinguishes rent invoices from utility (electricity) invoices.
+     * Defaults to {@link InvoiceType#RENT} for backward compatibility.
+     */
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invoice_type", columnDefinition = "varchar(20) default 'RENT'", length = 20)
+    @Builder.Default
+    private InvoiceType invoiceType = InvoiceType.RENT;
 
     @NotNull
     @Column(name = "invoice_date", nullable = false)

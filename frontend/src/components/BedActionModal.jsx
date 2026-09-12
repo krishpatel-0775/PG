@@ -90,11 +90,11 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
     }
   };
 
-  // Lookup existing user by Mobile Phone number onBlur
-  const handlePhoneBlur = async () => {
-    const phone = formData.tenantPhone.trim();
-    // Validate minimal length for mobile numbers (e.g. 10 digits)
-    if (!phone || phone.length < 10) {
+  // Lookup existing user by Email address onBlur
+  const handleEmailBlur = async () => {
+    const email = formData.tenantEmail.trim().toLowerCase();
+    // Validate minimal length and email structure
+    if (!email || !email.includes("@") || email.length < 5) {
       setLookupStatus(null);
       return;
     }
@@ -102,15 +102,12 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
     setLookupLoading(true);
     setErrorMessage("");
     try {
-      const response = await api.get(`/users/lookup?phone=${encodeURIComponent(phone)}`);
+      const response = await api.get(`/users/lookup?email=${encodeURIComponent(email)}`);
       if (response.data) {
         setFormData((prev) => ({
           ...prev,
           tenantName: response.data.name || prev.tenantName,
-          tenantEmail:
-            response.data.email && !response.data.email.includes("@temp.")
-              ? response.data.email
-              : prev.tenantEmail,
+          tenantPhone: response.data.phone || prev.tenantPhone,
         }));
         setLookupStatus("FOUND");
       }
@@ -131,7 +128,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
       ...prev,
       [name]: value,
     }));
-    if (name === "tenantPhone") {
+    if (name === "tenantEmail") {
       setLookupStatus(null);
     }
     if (errorMessage) setErrorMessage("");
@@ -145,9 +142,9 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
 
     try {
       await api.post("/allocations", {
-        tenantPhone: formData.tenantPhone.trim(),
+        tenantEmail: formData.tenantEmail.trim().toLowerCase(),
         tenantName: formData.tenantName.trim(),
-        tenantEmail: formData.tenantEmail?.trim() || null,
+        tenantPhone: formData.tenantPhone?.trim() || null,
         bedId: bed.id,
         checkInDate: formData.checkInDate,
         depositAmount: Number(formData.depositAmount),
@@ -381,21 +378,21 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
             </>
           )}
 
-          {/* VACANT BED ASSIGNMENT FORM (PHONE-FIRST LOGIC) */}
+          {/* VACANT BED ASSIGNMENT FORM (EMAIL-FIRST LOGIC) */}
           {isVacant && (
             <form onSubmit={handleAssignTenant} className="space-y-4" suppressHydrationWarning>
-              {/* Tenant Mobile Phone Number (Primary Key) */}
+              {/* Tenant Email Address (Primary Key) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label
-                    htmlFor="tenantPhone"
+                    htmlFor="tenantEmail"
                     className="block text-xs font-semibold text-slate-700"
                   >
-                    Tenant Mobile Number *
+                    Tenant Email Address *
                   </label>
                   {lookupLoading && (
                     <span className="text-[11px] text-indigo-600 font-medium flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Checking phone...
+                      <Loader2 className="w-3 h-3 animate-spin" /> Checking email...
                     </span>
                   )}
                   {lookupStatus === "FOUND" && (
@@ -411,17 +408,17 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                 </div>
                 <div className="relative rounded-xl shadow-xs">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Phone className="h-4 w-4" />
+                    <Mail className="h-4 w-4" />
                   </div>
                   <input
-                    id="tenantPhone"
-                    name="tenantPhone"
-                    type="tel"
+                    id="tenantEmail"
+                    name="tenantEmail"
+                    type="email"
                     required
-                    value={formData.tenantPhone}
+                    value={formData.tenantEmail}
                     onChange={handleChange}
-                    onBlur={handlePhoneBlur}
-                    placeholder="e.g. 9876543210"
+                    onBlur={handleEmailBlur}
+                    placeholder="e.g. ansh@gmail.com"
                     className="block w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs transition-all"
                   />
                 </div>
@@ -430,7 +427,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                 </p>
               </div>
 
-              {/* Full Name & Optional Email */}
+              {/* Full Name & Optional Phone Number */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label
@@ -458,22 +455,22 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
 
                 <div>
                   <label
-                    htmlFor="tenantEmail"
+                    htmlFor="tenantPhone"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Email Address (Optional)
+                    Tenant Mobile Number (Optional)
                   </label>
                   <div className="relative rounded-xl shadow-xs">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Mail className="h-4 w-4" />
+                      <Phone className="h-4 w-4" />
                     </div>
                     <input
-                      id="tenantEmail"
-                      name="tenantEmail"
-                      type="email"
-                      value={formData.tenantEmail}
+                      id="tenantPhone"
+                      name="tenantPhone"
+                      type="tel"
+                      value={formData.tenantPhone}
                       onChange={handleChange}
-                      placeholder="tenant@example.com"
+                      placeholder="e.g. 9876543210"
                       className="block w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs transition-all"
                     />
                   </div>
@@ -563,7 +560,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
               <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-900 flex items-start gap-2">
                 <Info className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  If this tenant is not yet registered, a shadow profile linked to this mobile number will be created. When they sign up using this phone number, their account will sync automatically.
+                  If this tenant is not yet registered, a shadow profile linked to this email address will be created. When they sign up using this email, their account will sync automatically.
                 </span>
               </div>
 

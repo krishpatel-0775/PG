@@ -233,9 +233,21 @@ export default function PropertyDetailsPage() {
       case "TRIPLE":
         return "3-Sharing (Triple)";
       case "FOUR_SHARING":
-        return "4-Sharing (Quad)";
+        return "4-Sharing";
+      case "FIVE_SHARING":
+        return "5-Sharing";
+      case "SIX_SHARING":
+        return "6-Sharing";
+      case "SEVEN_SHARING":
+        return "7-Sharing";
+      case "EIGHT_SHARING":
+        return "8-Sharing";
+      case "NINE_SHARING":
+        return "9-Sharing";
+      case "TEN_SHARING":
+        return "10-Sharing";
       default:
-        return type || "Standard Room";
+        return type ? type.replace(/_/g, " ") : "Standard Room";
     }
   };
 
@@ -411,15 +423,22 @@ export default function PropertyDetailsPage() {
 
               {/* Room Type Filter */}
               <select
+                id="typeFilter"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
               >
                 <option value="ALL">All Sharing Types</option>
-                <option value="SINGLE">Single</option>
+                <option value="SINGLE">Single (1)</option>
                 <option value="DOUBLE">Double (2)</option>
                 <option value="TRIPLE">Triple (3)</option>
-                <option value="FOUR_SHARING">Four Sharing (4)</option>
+                <option value="FOUR_SHARING">4 Sharing (4)</option>
+                <option value="FIVE_SHARING">5 Sharing (5)</option>
+                <option value="SIX_SHARING">6 Sharing (6)</option>
+                <option value="SEVEN_SHARING">7 Sharing (7)</option>
+                <option value="EIGHT_SHARING">8 Sharing (8)</option>
+                <option value="NINE_SHARING">9 Sharing (9)</option>
+                <option value="TEN_SHARING">10 Sharing (10)</option>
               </select>
             </div>
 

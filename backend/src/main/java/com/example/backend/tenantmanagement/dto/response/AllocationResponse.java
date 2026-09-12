@@ -37,6 +37,8 @@ public class AllocationResponse {
     private BigDecimal depositAmount;
     private BigDecimal monthlyRent;
     private AllocationStatus status;
+    private LocalDate plannedCheckoutDate;
+    private LocalDate noticeServedDate;
 
     /**
      * Factory method mapping an Allocation entity to AllocationResponse DTO.
@@ -68,6 +70,8 @@ public class AllocationResponse {
                 .depositAmount(allocation.getDepositAmount())
                 .monthlyRent(allocation.getMonthlyRent())
                 .status(allocation.getStatus())
+                .plannedCheckoutDate(allocation.getPlannedCheckoutDate())
+                .noticeServedDate(allocation.getNoticeServedDate())
                 .build();
     }
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import api from "@/lib/api";
 import {
   LayoutDashboard,
   Building,
@@ -21,6 +22,7 @@ import {
   Bell,
   BarChart3,
   Calendar,
+  Zap,
 } from "lucide-react";
 import NotificationDropdown from "@/components/NotificationDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -101,6 +103,7 @@ export default function DashboardLayout({ children }) {
     { name: "Properties & Beds", href: "/dashboard/properties", icon: Building },
     { name: "Allocations", href: "/dashboard/allocations", icon: Calendar },
     { name: "Rent & Invoices", href: "/dashboard/rent", icon: IndianRupee },
+    { name: "Sub-Meter Billing", href: "/dashboard/utilities", icon: Zap },
     { name: "Finance & Billing", href: "/dashboard/finance", icon: FileText },
     {
       name: "Complaints",

@@ -1,5 +1,6 @@
 package com.example.backend.propertymanagement;
 
+import com.example.backend.propertymanagement.dto.request.CreateRoomRequest;
 import com.example.backend.propertymanagement.dto.request.UpdateBedRequest;
 import com.example.backend.propertymanagement.dto.request.UpdatePropertyRequest;
 import com.example.backend.propertymanagement.dto.request.UpdateRoomRequest;
@@ -185,6 +186,34 @@ class PropertyServiceTest {
     // =========================================================================
     // Room Tests
     // =========================================================================
+
+    @Test
+    @DisplayName("Should successfully create room with SIX_SHARING and provision 6 beds")
+    void testCreateRoom_SixSharing_ProvisionsSixBeds() {
+        when(userRepository.findByEmail("owner1@test.com")).thenReturn(Optional.of(owner1));
+        when(propertyRepository.findById(10L)).thenReturn(Optional.of(property1));
+        when(roomRepository.existsByPropertyIdAndRoomNumber(10L, "205")).thenReturn(false);
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bedRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateRoomRequest request = CreateRoomRequest.builder()
+                .roomNumber("205")
+                .floor(1)
+                .roomType(RoomType.SIX_SHARING)
+                .baseRent(6000.0)
+                .hasAc(true)
+                .build();
+
+        RoomResponse response = propertyService.createRoom(10L, request, "owner1@test.com", false);
+
+        assertNotNull(response);
+        assertEquals("205", response.getRoomNumber());
+        assertEquals(RoomType.SIX_SHARING, response.getRoomType());
+        assertEquals(6, response.getCapacity());
+        assertEquals(6, response.getBeds().size());
+        assertEquals("205-A", response.getBeds().get(0).getBedNumber());
+        assertEquals("205-F", response.getBeds().get(5).getBedNumber());
+    }
 
     @Test
     @DisplayName("Should successfully update room identifier")

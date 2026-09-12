@@ -18,8 +18,10 @@ import {
   ShieldCheck,
   ChevronRight,
   History,
+  Zap,
 } from "lucide-react";
 import SimulatedCheckoutModal from "@/components/SimulatedCheckoutModal";
+import UtilityBreakdownModal from "@/components/UtilityBreakdownModal";
 
 export default function TenantMyRentPage() {
   const [invoices, setInvoices] = useState([]);
@@ -30,6 +32,10 @@ export default function TenantMyRentPage() {
   // Checkout Modal State
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Utility Breakdown Modal State
+  const [breakdownInvoice, setBreakdownInvoice] = useState(null);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
 
   useEffect(() => {
     fetchMyInvoices();
@@ -284,6 +290,12 @@ export default function TenantMyRentPage() {
                     {/* Left: Invoice Info */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-3 flex-wrap">
+                        {invoice.invoiceType === "UTILITY" && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                            <Zap className="w-3.5 h-3.5 fill-amber-400" />
+                            ⚡ Electricity Bill
+                          </span>
+                        )}
                         {isPaid && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -347,7 +359,7 @@ export default function TenantMyRentPage() {
                     <div className="flex flex-col sm:items-end justify-between gap-3 border-t sm:border-t-0 pt-4 sm:pt-0 border-slate-800">
                       <div className="text-left sm:text-right">
                         <span className="text-xs text-slate-400 uppercase tracking-wider block">
-                          Total Rent
+                          {invoice.invoiceType === "UTILITY" ? "Electricity Share" : "Total Rent"}
                         </span>
                         <div className="text-2xl font-bold text-white flex items-center sm:justify-end gap-1 mt-0.5">
                           ₹{formatCurrency(invoice.totalAmount)}
@@ -359,23 +371,39 @@ export default function TenantMyRentPage() {
                         )}
                       </div>
 
-                      {/* Pay Now Button (Opens Simulated Gateway Modal) */}
-                      {(isUnpaid || isPartial) ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCheckout(invoice)}
-                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all group"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          Pay Now
-                          <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                        </button>
-                      ) : (
-                        <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-3.5 py-1.5 rounded-2xl border border-emerald-500/20">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Settled
-                        </div>
-                      )}
+                      {/* Action Buttons: View Breakdown & Pay Now */}
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        {invoice.invoiceType === "UTILITY" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBreakdownInvoice(invoice);
+                              setIsBreakdownOpen(true);
+                            }}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
+                          >
+                            <Zap className="w-3.5 h-3.5" />
+                            View Breakdown
+                          </button>
+                        )}
+
+                        {(isUnpaid || isPartial) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCheckout(invoice)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/40 transition-all group cursor-pointer"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            Pay Now
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                          </button>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-500/10 px-3.5 py-1.5 rounded-2xl border border-emerald-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Settled
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -391,6 +419,14 @@ export default function TenantMyRentPage() {
         onClose={() => setIsCheckoutOpen(false)}
         invoice={selectedInvoice}
         onSuccess={fetchMyInvoices}
+      />
+
+      {/* Electricity Sub-Meter Breakdown Modal */}
+      <UtilityBreakdownModal
+        isOpen={isBreakdownOpen}
+        onClose={() => setIsBreakdownOpen(false)}
+        invoice={breakdownInvoice}
+        onPayNow={handleOpenCheckout}
       />
     </div>
   );

@@ -18,16 +18,15 @@ import java.time.LocalDate;
 @Builder
 public class CreateAllocationRequest {
 
-    @NotBlank(message = "Tenant mobile number is required")
-    @Size(max = 20, message = "Phone number cannot exceed 20 characters")
-    private String tenantPhone;
+    @Email(message = "Please provide a valid email format if provided")
+    @Size(max = 100, message = "Email cannot exceed 100 characters")
+    private String tenantEmail;
 
-    @NotBlank(message = "Tenant name is required")
     @Size(max = 100, message = "Tenant name cannot exceed 100 characters")
     private String tenantName;
 
-    @Email(message = "Please provide a valid email format if provided")
-    private String tenantEmail;
+    @Size(max = 20, message = "Phone number cannot exceed 20 characters")
+    private String tenantPhone;
 
     private Long tenantId;
 

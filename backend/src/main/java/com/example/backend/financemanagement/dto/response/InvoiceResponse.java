@@ -2,6 +2,7 @@ package com.example.backend.financemanagement.dto.response;
 
 import com.example.backend.financemanagement.entity.Invoice;
 import com.example.backend.financemanagement.entity.InvoiceStatus;
+import com.example.backend.financemanagement.entity.InvoiceType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,6 +39,7 @@ public class InvoiceResponse {
     private LocalDate invoiceDate;
     private LocalDate dueDate;
     private String invoiceMonth;
+    private InvoiceType invoiceType;
     private BigDecimal totalAmount;
     private BigDecimal amountPaid;
     private BigDecimal dueAmount;
@@ -78,6 +80,7 @@ public class InvoiceResponse {
                 .invoiceDate(invoice.getInvoiceDate())
                 .dueDate(invoice.getDueDate())
                 .invoiceMonth(invoice.getInvoiceMonth())
+                .invoiceType(invoice.getInvoiceType())
                 .totalAmount(invoice.getTotalAmount())
                 .amountPaid(invoice.getAmountPaid())
                 .dueAmount(due)

@@ -56,4 +56,18 @@ public class Allocation {
     @Column(nullable = false, length = 30)
     @Builder.Default
     private AllocationStatus status = AllocationStatus.ACTIVE;
+
+    /**
+     * The date the tenant intends to vacate, set when a move-out notice is served.
+     * Must be at least 30 days from the notice date.
+     */
+    @Column(name = "planned_checkout_date")
+    private LocalDate plannedCheckoutDate;
+
+    /**
+     * The date on which the tenant formally served their move-out notice.
+     * Automatically set to {@code LocalDate.now()} when status transitions to {@link AllocationStatus#NOTICE_SERVED}.
+     */
+    @Column(name = "notice_served_date")
+    private LocalDate noticeServedDate;
 }

@@ -54,6 +54,22 @@ public class Room {
     @Builder.Default
     private boolean hasAc = false;
 
+    /**
+     * Total bed capacity of this room used as the denominator when splitting
+     * electricity costs across beds. Reflects the physical capacity, not just
+     * currently active tenants, so that vacant-bed costs are owner-absorbed.
+     */
+    @Column(name = "total_capacity", columnDefinition = "integer default 1")
+    @Builder.Default
+    private Integer totalCapacity = 1;
+
+    public Integer getTotalCapacity() {
+        if (totalCapacity == null || totalCapacity <= 0) {
+            return (beds != null && !beds.isEmpty()) ? beds.size() : 1;
+        }
+        return totalCapacity;
+    }
+
     @Builder.Default
     @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Bed> beds = new ArrayList<>();
