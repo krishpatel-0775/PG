@@ -27,6 +27,8 @@ import {
   ShieldCheck,
   Zap,
   Home,
+  LayoutList,
+  MessageSquare,
 } from "lucide-react";
 import RecordPaymentModal from "@/components/RecordPaymentModal";
 
@@ -38,6 +40,7 @@ export default function RentManagementPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL"); // "ALL" | "RENT" | "UTILITY"
   const [activeTab, setActiveTab] = useState("ALL"); // "ALL" | "PENDING" | "PAID"
+  const [viewMode, setViewMode] = useState("TABLE"); // "TABLE" | "ROOM"
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -235,6 +238,125 @@ export default function RentManagementPage() {
     ).length;
   }, [invoices]);
 
+  const handleSendWhatsAppReminder = (inv) => {
+    const phone = (inv.tenantPhone || "").replace(/[^0-9]/g, "");
+    const cleanPhone = phone.length === 10 ? `91${phone}` : phone;
+    const dueAmt = formatCurrency(inv.dueAmount || inv.totalAmount);
+    const billType =
+      inv.invoiceType === "UTILITY" ? "Electricity / Utility bill" : "Monthly Room Rent";
+    const text = encodeURIComponent(
+      `Hello ${inv.tenantName || "Resident"}, this is a reminder regarding your pending ${billType} of ₹${dueAmt} for Room ${inv.roomNumber || ""} (Bed ${inv.bedNumber || ""}) at ${inv.propertyName || "our PG"}. Please clear the dues at your earliest convenience. Thank you!`
+    );
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, "_blank");
+  };
+
+  // Group invoices into room-level records
+  const roomWiseData = useMemo(() => {
+    const groups = {};
+
+    invoices.forEach((inv) => {
+      // Filter by type filter if selected (RENT or UTILITY)
+      if (typeFilter === "RENT" && inv.invoiceType && inv.invoiceType !== "RENT") return;
+      if (typeFilter === "UTILITY" && inv.invoiceType !== "UTILITY") return;
+
+      const prop = inv.propertyName || "Unassigned Property";
+      const room = inv.roomNumber || "Unassigned Room";
+      const key = `${prop}____${room}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          key,
+          propertyName: prop,
+          roomNumber: room,
+          invoices: [],
+          totalBilled: 0,
+          totalCollected: 0,
+          totalPending: 0,
+        };
+      }
+
+      groups[key].invoices.push(inv);
+      groups[key].totalBilled += Number(inv.totalAmount) || 0;
+      groups[key].totalCollected += Number(inv.amountPaid) || 0;
+      groups[key].totalPending += Number(inv.dueAmount) || 0;
+    });
+
+    const roomList = Object.values(groups).map((group) => {
+      const hasPending =
+        group.totalPending > 0 ||
+        group.invoices.some(
+          (i) => i.status === "UNPAID" || i.status === "PARTIALLY_PAID"
+        );
+      return {
+        ...group,
+        hasPending,
+        allPaid: !hasPending && group.invoices.length > 0,
+      };
+    });
+
+    // Filter roomList based on activeTab, statusFilter, and searchQuery
+    return roomList.filter((room) => {
+      // Tab filter
+      if (activeTab === "PENDING" && !room.hasPending) return false;
+      if (activeTab === "PAID" && room.hasPending) return false;
+
+      // Status filter
+      if (statusFilter === "PAID" && room.hasPending) return false;
+      if (statusFilter === "UNPAID" && room.allPaid) return false;
+      if (
+        statusFilter === "PARTIALLY_PAID" &&
+        !room.invoices.some((i) => i.status === "PARTIALLY_PAID")
+      )
+        return false;
+
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesRoom =
+          room.roomNumber.toLowerCase().includes(q) ||
+          room.propertyName.toLowerCase().includes(q) ||
+          `room ${room.roomNumber}`.toLowerCase().includes(q);
+        const matchesOccupant = room.invoices.some(
+          (i) =>
+            i.tenantName?.toLowerCase().includes(q) ||
+            i.tenantPhone?.toLowerCase().includes(q) ||
+            i.bedNumber?.toLowerCase().includes(q) ||
+            `#inv-${i.id}`.toLowerCase().includes(q) ||
+            String(i.id).includes(q)
+        );
+        if (!matchesRoom && !matchesOccupant) return false;
+      }
+
+      return true;
+    });
+  }, [invoices, typeFilter, activeTab, statusFilter, searchQuery]);
+
+  const totalRoomsCount = useMemo(() => {
+    const roomSet = new Set();
+    invoices.forEach((inv) => {
+      if (inv.roomNumber) {
+        roomSet.add(`${inv.propertyName || ""}____${inv.roomNumber}`);
+      }
+    });
+    return roomSet.size;
+  }, [invoices]);
+
+  const pendingRoomsCount = useMemo(() => {
+    const pendingSet = new Set();
+    invoices.forEach((inv) => {
+      if (
+        inv.roomNumber &&
+        (inv.status === "UNPAID" ||
+          inv.status === "PARTIALLY_PAID" ||
+          (Number(inv.dueAmount) || 0) > 0)
+      ) {
+        pendingSet.add(`${inv.propertyName || ""}____${inv.roomNumber}`);
+      }
+    });
+    return pendingSet.size;
+  }, [invoices]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto w-full pb-16">
       {/* Header & Actions */}
@@ -372,75 +494,107 @@ export default function RentManagementPage() {
         </div>
       </div>
 
-      {/* Tabs: All Invoices vs Pending Dues vs Paid Invoices */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("ALL")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "ALL"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-          }`}
-        >
-          <Receipt className="w-4 h-4" />
-          All Invoices
-          <span
-            className={`text-xs px-2 py-0.2 rounded-full font-bold ${
-              activeTab === "ALL" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+      {/* Tabs & View Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+        {/* Tabs: All vs Pending vs Paid */}
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab("ALL")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "ALL"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            {invoices.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("PENDING")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "PENDING"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-          }`}
-        >
-          <Clock className="w-4 h-4" />
-          Pending Dues
-          {pendingCount > 0 && (
+            <Receipt className="w-4 h-4" />
+            <span>{viewMode === "ROOM" ? "All Rooms" : "All Invoices"}</span>
             <span
               className={`text-xs px-2 py-0.2 rounded-full font-bold ${
-                activeTab === "PENDING"
-                  ? "bg-white/20 text-white"
-                  : "bg-rose-100 text-rose-700"
+                activeTab === "ALL" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
               }`}
             >
-              {pendingCount}
+              {viewMode === "ROOM" ? totalRoomsCount : invoices.length}
             </span>
-          )}
-        </button>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("PAID")}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === "PAID"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          Paid & Settled
-          {paidCount > 0 && (
-            <span
-              className={`text-xs px-2 py-0.2 rounded-full font-bold ${
-                activeTab === "PAID"
-                  ? "bg-white/20 text-white"
-                  : "bg-emerald-100 text-emerald-700"
-              }`}
-            >
-              {paidCount}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("PENDING")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "PENDING"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Pending Dues</span>
+            {(viewMode === "ROOM" ? pendingRoomsCount : pendingCount) > 0 && (
+              <span
+                className={`text-xs px-2 py-0.2 rounded-full font-bold ${
+                  activeTab === "PENDING"
+                    ? "bg-white/20 text-white"
+                    : "bg-rose-100 text-rose-700"
+                }`}
+              >
+                {viewMode === "ROOM" ? pendingRoomsCount : pendingCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("PAID")}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === "PAID"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Paid & Settled</span>
+            {(viewMode === "ROOM" ? Math.max(0, totalRoomsCount - pendingRoomsCount) : paidCount) > 0 && (
+              <span
+                className={`text-xs px-2 py-0.2 rounded-full font-bold ${
+                  activeTab === "PAID"
+                    ? "bg-white/20 text-white"
+                    : "bg-emerald-100 text-emerald-700"
+                }`}
+              >
+                {viewMode === "ROOM" ? Math.max(0, totalRoomsCount - pendingRoomsCount) : paidCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* View Mode Toggle: Table vs Room Matrix */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 flex-shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode("TABLE")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              viewMode === "TABLE"
+                ? "bg-white text-slate-900 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span>Invoice Ledger</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setViewMode("ROOM")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              viewMode === "ROOM"
+                ? "bg-white text-indigo-600 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Room-Wise Matrix</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters & Search Toolbar */}
@@ -449,7 +603,11 @@ export default function RentManagementPage() {
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by tenant name, phone, room, or invoice month..."
+            placeholder={
+              viewMode === "ROOM"
+                ? "Search by room number, property, or tenant name..."
+                : "Search by tenant name, phone, room, or invoice #..."
+            }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -481,200 +639,446 @@ export default function RentManagementPage() {
         </div>
       </div>
 
-      {/* Invoices Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
+      {/* Content: Room-Wise Matrix vs Invoices Table */}
+      {viewMode === "ROOM" ? (
+        loading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
             <RefreshCw className="w-7 h-7 animate-spin text-indigo-600" />
-            <p className="text-xs font-medium">Loading invoices and collection records...</p>
+            <p className="text-xs font-medium">Loading room rent matrix...</p>
           </div>
-        ) : filteredInvoices.length === 0 ? (
-          <div className="py-20 px-4 text-center">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-4 shadow-xs">
-              <CheckCircle2 className="w-7 h-7" />
+        ) : roomWiseData.length === 0 ? (
+          <div className="py-20 px-4 text-center bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-4 shadow-xs">
+              <Building2 className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">No Invoices Found</h3>
+            <h3 className="text-base font-bold text-slate-900">No Rooms Found</h3>
             <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
               {searchQuery
-                ? `No invoices matching "${searchQuery}".`
+                ? `No rooms or residents matching "${searchQuery}".`
                 : activeTab === "PENDING"
-                ? "All active tenants are currently settled with zero outstanding dues."
-                : "No invoice records found under this view."}
+                ? "All rooms are fully settled with zero pending rent dues."
+                : "No room billing records found."}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <tr>
-                  <th scope="col" className="px-6 py-4">Invoice # & Type</th>
-                  <th scope="col" className="px-6 py-4">Tenant Name</th>
-                  <th scope="col" className="px-6 py-4">Room / Bed</th>
-                  <th scope="col" className="px-6 py-4">Property</th>
-                  <th scope="col" className="px-6 py-4">Month & Due Date</th>
-                  <th scope="col" className="px-6 py-4">Total / Collected</th>
-                  <th scope="col" className="px-6 py-4">Status</th>
-                  <th scope="col" className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredInvoices.map((invoice) => {
-                  const isPaid = invoice.status === "PAID";
-                  const latestPayment =
-                    invoice.payments && invoice.payments.length > 0
-                      ? invoice.payments[invoice.payments.length - 1]
-                      : null;
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {roomWiseData.map((room) => {
+              const percentCollected =
+                room.totalBilled > 0
+                  ? Math.min(
+                      100,
+                      Math.round((room.totalCollected / room.totalBilled) * 100)
+                    )
+                  : 100;
 
-                  return (
-                    <tr
-                      key={invoice.id}
-                      className="hover:bg-slate-50/70 transition-colors group"
-                    >
-                      {/* Invoice # & Type */}
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                            #INV-{String(invoice.id).padStart(4, "0")}
+              return (
+                <div
+                  key={room.key}
+                  className={`bg-white rounded-2xl border transition-all duration-200 shadow-xs hover:shadow-md overflow-hidden ${
+                    room.hasPending
+                      ? "border-amber-200/90 hover:border-amber-300"
+                      : "border-slate-200/80 hover:border-slate-300"
+                  }`}
+                >
+                  {/* Room Header */}
+                  <div className="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs ${
+                          room.hasPending
+                            ? "bg-amber-50 border border-amber-200 text-amber-700"
+                            : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                        }`}
+                      >
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                            Room {room.roomNumber}
+                          </h3>
+                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-600 border border-slate-200/60">
+                            {room.invoices.length}{" "}
+                            {room.invoices.length === 1 ? "bill" : "bills"}
                           </span>
-                          {invoice.invoiceType === "UTILITY" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                              <Zap className="w-3 h-3 text-amber-600" />
-                              Electricity / Utility
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              <Home className="w-3 h-3 text-indigo-600" />
-                              Room Rent
-                            </span>
-                          )}
                         </div>
-                      </td>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {room.propertyName}
+                        </p>
+                      </div>
+                    </div>
 
-                      {/* Tenant Name */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs ${
-                              isPaid
-                                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                : "bg-indigo-50 border-indigo-100 text-indigo-600"
-                            }`}
-                          >
-                            {invoice.tenantName ? invoice.tenantName.charAt(0).toUpperCase() : "T"}
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors text-sm">
-                              {invoice.tenantName || "Unknown Tenant"}
+                    {/* Room Health Badge */}
+                    {room.hasPending ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-xs">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
+                        <span>₹{formatCurrency(room.totalPending)} Pending</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span>All Paid (100%)</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Room Financial Progress Strip */}
+                  <div className="px-5 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div>
+                        <span className="text-slate-400 font-medium">Billed: </span>
+                        <span className="font-bold text-slate-800">
+                          ₹{formatCurrency(room.totalBilled)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 font-medium">Collected: </span>
+                        <span className="font-bold text-emerald-600">
+                          ₹{formatCurrency(room.totalCollected)}
+                        </span>
+                      </div>
+                      {room.totalPending > 0 && (
+                        <div>
+                          <span className="text-slate-400 font-medium">Due: </span>
+                          <span className="font-bold text-rose-600">
+                            ₹{formatCurrency(room.totalPending)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="w-24 bg-slate-200 rounded-full h-2 overflow-hidden flex-shrink-0 hidden sm:block">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          room.hasPending ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${percentCollected}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Invoices / Occupants inside Room */}
+                  <div className="divide-y divide-slate-100">
+                    {room.invoices.map((inv) => {
+                      const isPaid = inv.status === "PAID";
+                      const isUtility = inv.invoiceType === "UTILITY";
+
+                      return (
+                        <div
+                          key={inv.id}
+                          className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          {/* Left: Bed, Tenant, Type & ID */}
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-1 flex-shrink-0 mt-0.5">
+                              <Bed className="w-3 h-3" />
+                              <span>Bed {inv.bedNumber || "-"}</span>
                             </div>
-                            <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-                              {invoice.tenantPhone && (
-                                <span className="flex items-center gap-1 font-mono">
-                                  <Phone className="w-3 h-3 text-slate-400" />
-                                  {invoice.tenantPhone}
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-900 text-sm truncate">
+                                  {inv.tenantName || "Unknown Tenant"}
                                 </span>
+                                {inv.tenantPhone && (
+                                  <span className="text-slate-400 font-mono text-[11px]">
+                                    ({inv.tenantPhone})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                                <span className="font-mono font-semibold text-slate-600">
+                                  #INV-{String(inv.id).padStart(4, "0")}
+                                </span>
+                                <span>•</span>
+                                <span
+                                  className={`inline-flex items-center gap-1 font-semibold ${
+                                    isUtility ? "text-amber-700" : "text-indigo-700"
+                                  }`}
+                                >
+                                  {isUtility ? (
+                                    <Zap className="w-3 h-3 text-amber-500" />
+                                  ) : (
+                                    <Home className="w-3 h-3 text-indigo-500" />
+                                  )}
+                                  {isUtility ? "Electricity / Utility" : "Room Rent"}
+                                </span>
+                                <span>•</span>
+                                <span>
+                                  {inv.invoiceMonth || formatDate(inv.invoiceDate)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Amount, Status & Actions */}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                            <div className="text-left sm:text-right">
+                              <div className="font-extrabold text-sm text-slate-900">
+                                ₹{formatCurrency(inv.totalAmount)}
+                              </div>
+                              {isPaid ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                  <CheckCircle2 className="w-3 h-3" /> Paid
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
+                                  <Clock className="w-3 h-3" /> Due: ₹
+                                  {formatCurrency(
+                                    inv.dueAmount || inv.totalAmount
+                                  )}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5">
+                              {isPaid ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReceipt(inv)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer text-xs"
+                                  title="View Digital Receipt"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  <span>Receipt</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPaymentModal(inv)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xs cursor-pointer text-xs"
+                                    title="Record Payment"
+                                  >
+                                    <CreditCard className="w-3.5 h-3.5" />
+                                    <span>Collect</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleSendWhatsAppReminder(inv)
+                                    }
+                                    className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer text-xs"
+                                    title="Send WhatsApp Reminder"
+                                  >
+                                    <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="hidden sm:inline">
+                                      Remind
+                                    </span>
+                                  </button>
+                                </>
                               )}
                             </div>
                           </div>
                         </div>
-                      </td>
-
-                      {/* Room / Bed */}
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 text-xs font-semibold text-slate-700">
-                          <Bed className="w-3.5 h-3.5 text-indigo-600" />
-                          {invoice.roomNumber ? `Room ${invoice.roomNumber}` : "Room -"}
-                          {invoice.bedNumber && ` • Bed ${invoice.bedNumber}`}
-                        </span>
-                      </td>
-
-                      {/* Property */}
-                      <td className="px-6 py-4">
-                        <div className="text-slate-700 font-medium text-xs flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {invoice.propertyName || "PG Property"}
-                        </div>
-                      </td>
-
-                      {/* Month & Due Date */}
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="font-semibold text-slate-900 text-xs">
-                            {invoice.invoiceMonth || "Monthly Rent"}
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            <span>Due: {formatDate(invoice.dueDate)}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Total / Collected */}
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">
-                            ₹{formatCurrency(invoice.totalAmount)}
-                          </div>
-                          {isPaid ? (
-                            <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Paid ₹{formatCurrency(invoice.amountPaid)}
-                            </div>
-                          ) : (
-                            <div className="text-[11px] text-rose-600 font-semibold mt-0.5">
-                              Due: ₹{formatCurrency(invoice.dueAmount)}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-6 py-4">
-                        {isPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            PAID
-                          </span>
-                        ) : invoice.status === "PARTIALLY_PAID" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            PARTIAL
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                            UNPAID
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Action Buttons */}
-                      <td className="px-6 py-4 text-right">
-                        {isPaid ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenReceipt(invoice)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs transition-all cursor-pointer"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            View Receipt
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenPaymentModal(invoice)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            Record Pay
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        )
+      ) : (
+        /* Invoices Table */
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
+              <RefreshCw className="w-7 h-7 animate-spin text-indigo-600" />
+              <p className="text-xs font-medium">Loading invoices and collection records...</p>
+            </div>
+          ) : filteredInvoices.length === 0 ? (
+            <div className="py-20 px-4 text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-4 shadow-xs">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">No Invoices Found</h3>
+              <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
+                {searchQuery
+                  ? `No invoices matching "${searchQuery}".`
+                  : activeTab === "PENDING"
+                  ? "All active tenants are currently settled with zero outstanding dues."
+                  : "No invoice records found under this view."}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <tr>
+                    <th scope="col" className="px-6 py-4">Invoice # & Type</th>
+                    <th scope="col" className="px-6 py-4">Tenant Name</th>
+                    <th scope="col" className="px-6 py-4">Room / Bed</th>
+                    <th scope="col" className="px-6 py-4">Property</th>
+                    <th scope="col" className="px-6 py-4">Month & Due Date</th>
+                    <th scope="col" className="px-6 py-4">Total / Collected</th>
+                    <th scope="col" className="px-6 py-4">Status</th>
+                    <th scope="col" className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredInvoices.map((invoice) => {
+                    const isPaid = invoice.status === "PAID";
+                    const latestPayment =
+                      invoice.payments && invoice.payments.length > 0
+                        ? invoice.payments[invoice.payments.length - 1]
+                        : null;
+
+                    return (
+                      <tr
+                        key={invoice.id}
+                        className="hover:bg-slate-50/70 transition-colors group"
+                      >
+                        {/* Invoice # & Type */}
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                              #INV-{String(invoice.id).padStart(4, "0")}
+                            </span>
+                            {invoice.invoiceType === "UTILITY" ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Zap className="w-3 h-3 text-amber-600" />
+                                Electricity / Utility
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                <Home className="w-3 h-3 text-indigo-600" />
+                                Room Rent
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Tenant Name */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm shadow-xs ${
+                                isPaid
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                  : "bg-indigo-50 border-indigo-100 text-indigo-600"
+                              }`}
+                            >
+                              {invoice.tenantName ? invoice.tenantName.charAt(0).toUpperCase() : "T"}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">
+                                {invoice.tenantName || "Unknown"}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                                {invoice.tenantPhone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3 text-slate-400" />
+                                    {invoice.tenantPhone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Room & Bed */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                            <Bed className="w-4 h-4 text-slate-400" />
+                            <span>Room {invoice.roomNumber || "-"}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="text-slate-600 text-xs">
+                              Bed {invoice.bedNumber || "-"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Property */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-700">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="truncate max-w-[140px]">
+                              {invoice.propertyName || "N/A"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Month & Due Date */}
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-semibold text-slate-900 text-xs">
+                              {invoice.invoiceMonth || "N/A"}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>Due: {formatDate(invoice.dueDate)}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Total & Paid Amount */}
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-bold text-slate-900 text-sm">
+                              ₹{formatCurrency(invoice.totalAmount)}
+                            </div>
+                            {isPaid ? (
+                              <div className="text-[11px] font-semibold text-emerald-600 mt-0.5">
+                                Paid: ₹{formatCurrency(invoice.amountPaid)}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] font-semibold text-rose-600 mt-0.5">
+                                Due: ₹{formatCurrency(invoice.dueAmount || invoice.totalAmount)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-6 py-4">
+                          {isPaid ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              PAID
+                            </span>
+                          ) : invoice.status === "PARTIALLY_PAID" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              PARTIAL
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              UNPAID
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Action Buttons */}
+                        <td className="px-6 py-4 text-right">
+                          {isPaid ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReceipt(invoice)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs transition-all cursor-pointer"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              View Receipt
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPaymentModal(invoice)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+                            >
+                              <CreditCard className="w-3.5 h-3.5" />
+                              Record Pay
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Record Payment Modal */}
       <RecordPaymentModal
