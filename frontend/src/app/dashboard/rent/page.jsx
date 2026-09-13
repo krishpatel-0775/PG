@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import {
@@ -25,6 +25,8 @@ import {
   X,
   History,
   ShieldCheck,
+  Zap,
+  Home,
 } from "lucide-react";
 import RecordPaymentModal from "@/components/RecordPaymentModal";
 
@@ -34,6 +36,7 @@ export default function RentManagementPage() {
   const [triggering, setTriggering] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL"); // "ALL" | "RENT" | "UTILITY"
   const [activeTab, setActiveTab] = useState("ALL"); // "ALL" | "PENDING" | "PAID"
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -46,20 +49,14 @@ export default function RentManagementPage() {
   const [receiptInvoice, setReceiptInvoice] = useState(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
-  useEffect(() => {
-    fetchAllInvoices();
-  }, []);
-
   const fetchAllInvoices = async () => {
     setLoading(true);
     setErrorMessage("");
     try {
-      // 1. Try modern endpoint that returns ALL invoices (PAID, PARTIALLY_PAID, UNPAID)
       let response;
       try {
         response = await api.get("/finance/invoices?status=ALL");
       } catch (e) {
-        // 2. Fallback to pending endpoint if not yet restarted
         console.warn("Falling back to pending invoices endpoint", e);
         response = await api.get("/finance/invoices/pending");
       }
@@ -75,6 +72,37 @@ export default function RentManagementPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        let response;
+        try {
+          response = await api.get("/finance/invoices?status=ALL");
+        } catch (e) {
+          console.warn("Falling back to pending invoices endpoint", e);
+          response = await api.get("/finance/invoices/pending");
+        }
+        if (!isMounted) return;
+        setInvoices(response.data || []);
+      } catch (err) {
+        if (!isMounted) return;
+        const backendMessage =
+          err.response?.data?.message ||
+          err.response?.data?.detail ||
+          err.message ||
+          "Failed to load rent invoices.";
+        setErrorMessage(backendMessage);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleOpenPaymentModal = (invoice) => {
     setSelectedInvoice(invoice);
@@ -138,10 +166,10 @@ export default function RentManagementPage() {
     });
   };
 
-  // Filtered invoices based on search, tab, and status filter
+  // Filtered invoices based on search, tab, status, and type filter
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
         inv.tenantName?.toLowerCase().includes(q) ||
@@ -150,7 +178,11 @@ export default function RentManagementPage() {
         inv.propertyName?.toLowerCase().includes(q) ||
         inv.roomNumber?.toLowerCase().includes(q) ||
         inv.bedNumber?.toLowerCase().includes(q) ||
-        inv.invoiceMonth?.toLowerCase().includes(q);
+        inv.invoiceMonth?.toLowerCase().includes(q) ||
+        `#inv-${inv.id}`.toLowerCase().includes(q) ||
+        `inv-${inv.id}`.toLowerCase().includes(q) ||
+        String(inv.id).includes(q) ||
+        (inv.invoiceType || "").toLowerCase().includes(q);
 
       let matchesTab = true;
       if (activeTab === "PENDING") {
@@ -162,9 +194,14 @@ export default function RentManagementPage() {
       const matchesStatus =
         statusFilter === "ALL" || inv.status === statusFilter;
 
-      return matchesSearch && matchesTab && matchesStatus;
+      const matchesType =
+        typeFilter === "ALL" ||
+        (typeFilter === "RENT" && (!inv.invoiceType || inv.invoiceType === "RENT")) ||
+        (typeFilter === "UTILITY" && inv.invoiceType === "UTILITY");
+
+      return matchesSearch && matchesTab && matchesStatus && matchesType;
     });
-  }, [invoices, searchQuery, activeTab, statusFilter]);
+  }, [invoices, searchQuery, activeTab, statusFilter, typeFilter]);
 
   // Aggregate KPI Metrics
   const totalOutstanding = useMemo(() => {
@@ -419,8 +456,18 @@ export default function RentManagementPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Filter className="w-4 h-4 text-slate-400" />
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer transition-all"
+          >
+            <option value="ALL">All Invoice Types</option>
+            <option value="RENT">🏠 Room Rent Only</option>
+            <option value="UTILITY">⚡ Electricity / Utility Only</option>
+          </select>
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -449,7 +496,7 @@ export default function RentManagementPage() {
             <h3 className="text-base font-bold text-slate-900">No Invoices Found</h3>
             <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
               {searchQuery
-                ? "No invoices match your search query."
+                ? `No invoices matching "${searchQuery}".`
                 : activeTab === "PENDING"
                 ? "All active tenants are currently settled with zero outstanding dues."
                 : "No invoice records found under this view."}
@@ -460,6 +507,7 @@ export default function RentManagementPage() {
             <table className="w-full text-left text-sm text-slate-600">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
+                  <th scope="col" className="px-6 py-4">Invoice # & Type</th>
                   <th scope="col" className="px-6 py-4">Tenant Name</th>
                   <th scope="col" className="px-6 py-4">Room / Bed</th>
                   <th scope="col" className="px-6 py-4">Property</th>
@@ -482,6 +530,26 @@ export default function RentManagementPage() {
                       key={invoice.id}
                       className="hover:bg-slate-50/70 transition-colors group"
                     >
+                      {/* Invoice # & Type */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            #INV-{String(invoice.id).padStart(4, "0")}
+                          </span>
+                          {invoice.invoiceType === "UTILITY" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                              <Zap className="w-3 h-3 text-amber-600" />
+                              Electricity / Utility
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <Home className="w-3 h-3 text-indigo-600" />
+                              Room Rent
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Tenant Name */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -628,7 +696,11 @@ export default function RentManagementPage() {
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-900 text-sm">Official Rent Payment Receipt</h3>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {receiptInvoice.invoiceType === "UTILITY"
+                    ? "Official Utility / Electricity Receipt"
+                    : "Official Rent Payment Receipt"}
+                </h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -662,8 +734,16 @@ export default function RentManagementPage() {
                 <p className="text-slate-500 text-[11px]">
                   {receiptInvoice.propertyAddress || "Verified PG Property"}
                 </p>
-                <div className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
-                  Invoice #{receiptInvoice.id} &bull; {receiptInvoice.invoiceMonth}
+                <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200">
+                  <span>#INV-{String(receiptInvoice.id).padStart(4, "0")}</span>
+                  <span>&bull;</span>
+                  <span>
+                    {receiptInvoice.invoiceType === "UTILITY"
+                      ? "Electricity / Utility"
+                      : "Monthly Rent"}
+                  </span>
+                  <span>&bull;</span>
+                  <span>{receiptInvoice.invoiceMonth}</span>
                 </div>
               </div>
 

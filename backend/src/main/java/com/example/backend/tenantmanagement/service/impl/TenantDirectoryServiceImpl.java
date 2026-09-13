@@ -19,7 +19,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -55,22 +58,29 @@ public class TenantDirectoryServiceImpl implements TenantDirectoryService {
                 ? new ArrayList<>(allocationRepository.findAll())
                 : new ArrayList<>(allocationRepository.findByBedRoomPropertyOwnerId(caller.getId()));
 
-        // Sort active allocations first, then by check-in date descending
-        allocations.sort((a, b) -> {
-            boolean aActive = a.getStatus() == AllocationStatus.ACTIVE;
-            boolean bActive = b.getStatus() == AllocationStatus.ACTIVE;
-            if (aActive != bActive) {
-                return aActive ? -1 : 1;
-            }
-            if (a.getCheckInDate() != null && b.getCheckInDate() != null) {
-                return b.getCheckInDate().compareTo(a.getCheckInDate());
-            }
-            return 0;
-        });
-
-        return allocations.stream().map(allocation -> {
+        // Group allocations by tenant ID
+        Map<Long, List<Allocation>> allocationsByTenant = new LinkedHashMap<>();
+        for (Allocation allocation : allocations) {
             User tenant = allocation.getTenant();
-            var bed = allocation.getBed();
+            if (tenant != null && tenant.getId() != null) {
+                allocationsByTenant.computeIfAbsent(tenant.getId(), k -> new ArrayList<>()).add(allocation);
+            }
+        }
+
+        List<TenantListResponse> tenants = new ArrayList<>();
+        for (Map.Entry<Long, List<Allocation>> entry : allocationsByTenant.entrySet()) {
+            List<Allocation> tenantAllocs = entry.getValue();
+
+            // Prioritize ACTIVE allocation if available, otherwise latest allocation by check-in date
+            Allocation primary = tenantAllocs.stream()
+                    .filter(a -> a.getStatus() == AllocationStatus.ACTIVE)
+                    .max(Comparator.comparing(Allocation::getCheckInDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .orElseGet(() -> tenantAllocs.stream()
+                            .max(Comparator.comparing(Allocation::getCheckInDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                            .orElse(tenantAllocs.get(0)));
+
+            User tenant = primary.getTenant();
+            var bed = primary.getBed();
             var room = bed != null ? bed.getRoom() : null;
             var property = room != null ? room.getProperty() : null;
 
@@ -79,17 +89,34 @@ public class TenantDirectoryServiceImpl implements TenantDirectoryService {
             String currentRoomBed = String.format("Room %s • Bed %s", roomNum, bedNum);
             String propertyName = property != null ? property.getName() : "N/A";
 
-            return TenantListResponse.builder()
-                    .tenantId(tenant != null ? tenant.getId() : null)
-                    .name(tenant != null ? tenant.getName() : "Unknown Tenant")
+            tenants.add(TenantListResponse.builder()
+                    .tenantId(tenant != null ? tenant.getId() : entry.getKey())
+                    .name(tenant != null && tenant.getName() != null ? tenant.getName() : "Unknown Tenant")
                     .phone(tenant != null ? tenant.getPhone() : null)
                     .email(tenant != null ? tenant.getEmail() : null)
                     .currentPropertyName(propertyName)
                     .currentRoomBed(currentRoomBed)
-                    .checkInDate(allocation.getCheckInDate())
-                    .allocationStatus(allocation.getStatus() != null ? allocation.getStatus().name() : "N/A")
-                    .build();
-        }).collect(Collectors.toList());
+                    .checkInDate(primary.getCheckInDate())
+                    .allocationStatus(primary.getStatus() != null ? primary.getStatus().name() : "N/A")
+                    .build());
+        }
+
+        // Sort unique tenants: active residents first, then by check-in date descending
+        tenants.sort((a, b) -> {
+            boolean aActive = "ACTIVE".equalsIgnoreCase(a.getAllocationStatus());
+            boolean bActive = "ACTIVE".equalsIgnoreCase(b.getAllocationStatus());
+            if (aActive != bActive) {
+                return aActive ? -1 : 1;
+            }
+            if (a.getCheckInDate() != null && b.getCheckInDate() != null) {
+                return b.getCheckInDate().compareTo(a.getCheckInDate());
+            }
+            if (a.getCheckInDate() != null) return -1;
+            if (b.getCheckInDate() != null) return 1;
+            return 0;
+        });
+
+        return tenants;
     }
 
     /**

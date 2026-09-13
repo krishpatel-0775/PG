@@ -30,10 +30,6 @@ export default function TenantDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL"); // "ALL" | "ACTIVE" | "COMPLETED"
 
-  useEffect(() => {
-    fetchTenants();
-  }, []);
-
   const fetchTenants = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -52,6 +48,31 @@ export default function TenantDirectoryPage() {
     }
   };
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadData = async () => {
+      try {
+        const response = await api.get("/directory/tenants");
+        if (!isMounted) return;
+        setTenants(response.data || []);
+      } catch (err) {
+        if (!isMounted) return;
+        const backendMessage =
+          err.response?.data?.message ||
+          err.response?.data?.detail ||
+          err.message ||
+          "Failed to load tenant directory.";
+        setErrorMessage(backendMessage);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
     try {
@@ -68,17 +89,22 @@ export default function TenantDirectoryPage() {
 
   const filteredTenants = useMemo(() => {
     return tenants.filter((tenant) => {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      const rawId = q.replace(/[^0-9]/g, "");
       const matchesSearch =
         !q ||
         tenant.name?.toLowerCase().includes(q) ||
         tenant.phone?.toLowerCase().includes(q) ||
         tenant.email?.toLowerCase().includes(q) ||
         tenant.currentPropertyName?.toLowerCase().includes(q) ||
-        tenant.currentRoomBed?.toLowerCase().includes(q);
+        tenant.currentRoomBed?.toLowerCase().includes(q) ||
+        (rawId && String(tenant.tenantId) === rawId);
 
       const matchesStatus =
-        statusFilter === "ALL" || tenant.allocationStatus === statusFilter;
+        statusFilter === "ALL" ||
+        (statusFilter === "ACTIVE"
+          ? tenant.allocationStatus === "ACTIVE"
+          : tenant.allocationStatus !== "ACTIVE");
 
       return matchesSearch && matchesStatus;
     });
@@ -89,7 +115,7 @@ export default function TenantDirectoryPage() {
   }, [tenants]);
 
   const completedCount = useMemo(() => {
-    return tenants.filter((t) => t.allocationStatus === "COMPLETED").length;
+    return tenants.filter((t) => t.allocationStatus !== "ACTIVE").length;
   }, [tenants]);
 
   return (
@@ -267,12 +293,12 @@ export default function TenantDirectoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredTenants.map((tenant, idx) => {
+                {filteredTenants.map((tenant) => {
                   const isActive = tenant.allocationStatus === "ACTIVE";
 
                   return (
                     <tr
-                      key={`${tenant.tenantId}-${idx}`}
+                      key={tenant.tenantId}
                       onClick={() => router.push(`/dashboard/tenants/${tenant.tenantId}`)}
                       className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
                     >
