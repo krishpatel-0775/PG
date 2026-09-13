@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { X, Building2, Loader2, AlertCircle } from "lucide-react";
+import { X, Building2, Loader2, AlertCircle, AlertTriangle, Calendar, CalendarDays } from "lucide-react";
 
 export default function EditPropertyModal({ isOpen, onClose, property, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -13,6 +13,7 @@ export default function EditPropertyModal({ isOpen, onClose, property, onSuccess
     city: "",
     state: "",
     totalFloors: 1,
+    billingCyclePreference: "ANNIVERSARY",
   });
 
   useEffect(() => {
@@ -23,12 +24,16 @@ export default function EditPropertyModal({ isOpen, onClose, property, onSuccess
         city: property.city || "",
         state: property.state || "",
         totalFloors: property.totalFloors || 1,
+        billingCyclePreference: property.billingCyclePreference || "ANNIVERSARY",
       });
       setErrorMessage("");
     }
   }, [property, isOpen]);
 
   if (!isOpen || !property) return null;
+
+  const initialCycle = property.billingCyclePreference || "ANNIVERSARY";
+  const isCycleChanged = formData.billingCyclePreference !== initialCycle;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,7 +49,16 @@ export default function EditPropertyModal({ isOpen, onClose, property, onSuccess
     setErrorMessage("");
 
     try {
-      const response = await api.put(`/properties/${property.id}`, formData);
+      const payload = {
+        name: formData.name.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        totalFloors: Number(formData.totalFloors),
+        billingCyclePreference: formData.billingCyclePreference,
+      };
+
+      const response = await api.put(`/properties/${property.id}`, payload);
       if (onSuccess) {
         onSuccess(response.data);
       }
@@ -175,6 +189,112 @@ export default function EditPropertyModal({ isOpen, onClose, property, onSuccess
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-all"
             />
           </div>
+
+          {/* Billing Cycle Preference */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Billing Cycle Preference *
+            </label>
+            <p className="text-[11px] text-slate-500 mb-2.5">
+              Determines when rent invoices are generated for tenants.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Option 1: Anniversary */}
+              <label
+                className={`relative flex items-start p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.billingCyclePreference === "ANNIVERSARY"
+                    ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600/20"
+                    : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="billingCyclePreference"
+                  value="ANNIVERSARY"
+                  checked={formData.billingCyclePreference === "ANNIVERSARY"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <div className="flex items-start gap-2.5 w-full">
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${
+                      formData.billingCyclePreference === "ANNIVERSARY"
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {formData.billingCyclePreference === "ANNIVERSARY" && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">
+                        Anniversary Billing
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-500 leading-tight">
+                      Tenants are billed monthly on the exact date they checked in.
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              {/* Option 2: 1st of Month */}
+              <label
+                className={`relative flex items-start p-3 rounded-xl border cursor-pointer transition-all ${
+                  formData.billingCyclePreference === "FIRST_OF_MONTH"
+                    ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600/20"
+                    : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="billingCyclePreference"
+                  value="FIRST_OF_MONTH"
+                  checked={formData.billingCyclePreference === "FIRST_OF_MONTH"}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <div className="flex items-start gap-2.5 w-full">
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors ${
+                      formData.billingCyclePreference === "FIRST_OF_MONTH"
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {formData.billingCyclePreference === "FIRST_OF_MONTH" && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                      <span className="text-xs font-bold text-slate-900">
+                        1st of the Month
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] text-slate-500 leading-tight">
+                      All tenants are billed on 1st. Move-ins are prorated.
+                    </p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Warning Banner if billing cycle changed */}
+          {isCycleChanged && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start gap-2.5 text-xs animate-in fade-in">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+              <div className="flex-1 font-medium leading-relaxed">
+                Warning: Changing this on an active property will alter the billing schedule for all current tenants starting next month.
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
             <button

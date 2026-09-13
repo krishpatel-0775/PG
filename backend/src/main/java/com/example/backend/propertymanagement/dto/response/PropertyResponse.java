@@ -1,6 +1,7 @@
 package com.example.backend.propertymanagement.dto.response;
 
 import com.example.backend.propertymanagement.entity.BedStatus;
+import com.example.backend.propertymanagement.entity.BillingCycleType;
 import com.example.backend.propertymanagement.entity.Property;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +27,7 @@ public class PropertyResponse {
     private String city;
     private String state;
     private Integer totalFloors;
+    private BillingCycleType billingCyclePreference;
     private Long ownerId;
     private String ownerName;
     private String ownerEmail;
@@ -76,6 +78,9 @@ public class PropertyResponse {
                 .city(property.getCity())
                 .state(property.getState())
                 .totalFloors(property.getTotalFloors())
+                .billingCyclePreference(property.getBillingCyclePreference() != null
+                        ? property.getBillingCyclePreference()
+                        : BillingCycleType.ANNIVERSARY)
                 .ownerId(property.getOwner() != null ? property.getOwner().getId() : null)
                 .ownerName(property.getOwner() != null ? property.getOwner().getName() : null)
                 .ownerEmail(property.getOwner() != null ? property.getOwner().getEmail() : null)

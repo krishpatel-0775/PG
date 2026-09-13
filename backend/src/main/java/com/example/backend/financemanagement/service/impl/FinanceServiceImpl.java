@@ -16,6 +16,8 @@ import com.example.backend.tenantmanagement.entity.AllocationStatus;
 import com.example.backend.tenantmanagement.repository.AllocationRepository;
 import com.example.backend.usermanagement.entity.User;
 import com.example.backend.usermanagement.repository.UserRepository;
+import com.example.backend.propertymanagement.entity.BillingCycleType;
+import com.example.backend.propertymanagement.entity.Property;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,12 +93,29 @@ public class FinanceServiceImpl implements FinanceService {
                 continue;
             }
 
-            // Anniversary billing calculation
-            int checkInDay = checkInDate.getDayOfMonth();
-            int daysInCurrentMonth = today.lengthOfMonth();
-            int targetBillingDay = Math.min(checkInDay, daysInCurrentMonth);
+            // Retrieve linked property billing cycle preference
+            var bed = allocation.getBed();
+            var room = bed != null ? bed.getRoom() : null;
+            var property = room != null ? room.getProperty() : null;
+            BillingCycleType billingCycleType = property != null && property.getBillingCyclePreference() != null
+                    ? property.getBillingCyclePreference()
+                    : BillingCycleType.ANNIVERSARY;
 
-            if (today.getDayOfMonth() == targetBillingDay) {
+            boolean shouldBillToday = false;
+            if (billingCycleType == BillingCycleType.ANNIVERSARY) {
+                // Path A: Anniversary billing (skip check-in month; billed starting next month on anniversary)
+                if (!YearMonth.from(today).equals(YearMonth.from(checkInDate))) {
+                    int checkInDay = checkInDate.getDayOfMonth();
+                    int daysInCurrentMonth = today.lengthOfMonth();
+                    int targetBillingDay = Math.min(checkInDay, daysInCurrentMonth);
+                    shouldBillToday = (today.getDayOfMonth() == targetBillingDay);
+                }
+            } else if (billingCycleType == BillingCycleType.FIRST_OF_MONTH) {
+                // Path B: 1st of the month billing
+                shouldBillToday = (today.getDayOfMonth() == 1);
+            }
+
+            if (shouldBillToday) {
                 // Check if invoice already exists for this allocation on today's billing date
                 if (!invoiceRepository.existsByAllocationIdAndInvoiceDate(allocation.getId(), today)) {
                     Invoice invoice = Invoice.builder()

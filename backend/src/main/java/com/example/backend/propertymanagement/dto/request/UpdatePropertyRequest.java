@@ -1,5 +1,6 @@
 package com.example.backend.propertymanagement.dto.request;
 
+import com.example.backend.propertymanagement.entity.BillingCycleType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -37,4 +38,6 @@ public class UpdatePropertyRequest {
     @NotNull(message = "Total floors count is required")
     @Min(value = 1, message = "Total floors must be at least 1")
     private Integer totalFloors;
+
+    private BillingCycleType billingCyclePreference;
 }

@@ -22,6 +22,8 @@ import {
   Users,
   Pencil,
   Trash2,
+  Calendar,
+  CalendarDays,
 } from "lucide-react";
 import BedActionModal from "@/components/BedActionModal";
 import EditPropertyModal from "@/components/EditPropertyModal";
@@ -66,12 +68,6 @@ export default function PropertyDetailsPage() {
     setIsModalOpen(true);
   };
 
-  useEffect(() => {
-    if (propertyId) {
-      fetchPropertyDetails();
-    }
-  }, [propertyId]);
-
   const fetchPropertyDetails = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -89,6 +85,12 @@ export default function PropertyDetailsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (propertyId) {
+      fetchPropertyDetails();
+    }
+  }, [propertyId]);
 
   // ===========================================================================
   // Edit & Delete Event Handlers
@@ -290,11 +292,34 @@ export default function PropertyDetailsPage() {
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                {property?.name || "Loading..."}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                  {property?.name || "Loading..."}
+                </h1>
+                {property && (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs ${
+                      property.billingCyclePreference === "FIRST_OF_MONTH"
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        : "bg-slate-100 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    {property.billingCyclePreference === "FIRST_OF_MONTH" ? (
+                      <>
+                        <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+                        Billing Mode: 1st of the Month
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        Billing Mode: Anniversary
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
               {property && (
-                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-1">
                   <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   {property.address}, {property.city}, {property.state} &bull;{" "}
                   <span className="text-slate-700 font-medium">

@@ -127,6 +127,7 @@ class PropertyServiceTest {
                 .city("Bangalore")
                 .state("Karnataka")
                 .totalFloors(4)
+                .billingCyclePreference(com.example.backend.propertymanagement.entity.BillingCycleType.FIRST_OF_MONTH)
                 .build();
 
         PropertyResponse response = propertyService.updateProperty(10L, request, "owner1@test.com", false);
@@ -135,6 +136,35 @@ class PropertyServiceTest {
         assertEquals("Sunrise Luxury PG", response.getName());
         assertEquals("456 New Road", response.getAddress());
         assertEquals(4, response.getTotalFloors());
+        assertEquals(com.example.backend.propertymanagement.entity.BillingCycleType.FIRST_OF_MONTH, response.getBillingCyclePreference());
+    }
+
+    @Test
+    @DisplayName("Should successfully create property with default and explicit BillingCycleType")
+    void testCreateProperty_WithBillingCycle() {
+        when(userRepository.findByEmail("owner1@test.com")).thenReturn(Optional.of(owner1));
+        when(propertyRepository.existsByNameAndOwnerId("New PG", 1L)).thenReturn(false);
+        when(propertyRepository.save(any(Property.class))).thenAnswer(invocation -> {
+            Property p = invocation.getArgument(0);
+            p.setId(99L);
+            return p;
+        });
+
+        com.example.backend.propertymanagement.dto.request.CreatePropertyRequest request =
+                com.example.backend.propertymanagement.dto.request.CreatePropertyRequest.builder()
+                        .name("New PG")
+                        .address("100 Main St")
+                        .city("Bangalore")
+                        .state("Karnataka")
+                        .totalFloors(2)
+                        .billingCyclePreference(com.example.backend.propertymanagement.entity.BillingCycleType.FIRST_OF_MONTH)
+                        .build();
+
+        PropertyResponse response = propertyService.createProperty(request, "owner1@test.com");
+
+        assertNotNull(response);
+        assertEquals("New PG", response.getName());
+        assertEquals(com.example.backend.propertymanagement.entity.BillingCycleType.FIRST_OF_MONTH, response.getBillingCyclePreference());
     }
 
     @Test

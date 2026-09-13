@@ -51,6 +51,12 @@ public class Property {
     @Column(name = "total_floors", nullable = false)
     private Integer totalFloors;
 
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_cycle_preference", nullable = false, length = 30, columnDefinition = "varchar(30) default 'ANNIVERSARY'")
+    @Builder.Default
+    private BillingCycleType billingCyclePreference = BillingCycleType.ANNIVERSARY;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;

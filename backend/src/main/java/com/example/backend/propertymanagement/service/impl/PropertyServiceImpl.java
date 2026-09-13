@@ -10,6 +10,7 @@ import com.example.backend.propertymanagement.dto.response.PropertyResponse;
 import com.example.backend.propertymanagement.dto.response.RoomResponse;
 import com.example.backend.propertymanagement.entity.Bed;
 import com.example.backend.propertymanagement.entity.BedStatus;
+import com.example.backend.propertymanagement.entity.BillingCycleType;
 import com.example.backend.propertymanagement.entity.Property;
 import com.example.backend.propertymanagement.entity.Room;
 import com.example.backend.propertymanagement.repository.BedRepository;
@@ -64,12 +65,17 @@ public class PropertyServiceImpl implements PropertyService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "A property named '" + request.getName() + "' already exists for this owner.");
         }
 
+        BillingCycleType billingCycle = request.getBillingCyclePreference() != null
+                ? request.getBillingCyclePreference()
+                : BillingCycleType.ANNIVERSARY;
+
         Property property = Property.builder()
                 .name(request.getName().trim())
                 .address(request.getAddress().trim())
                 .city(request.getCity().trim())
                 .state(request.getState().trim())
                 .totalFloors(request.getTotalFloors())
+                .billingCyclePreference(billingCycle)
                 .owner(owner)
                 .rooms(new ArrayList<>())
                 .build();
@@ -222,6 +228,9 @@ public class PropertyServiceImpl implements PropertyService {
         property.setCity(request.getCity().trim());
         property.setState(request.getState().trim());
         property.setTotalFloors(request.getTotalFloors());
+        if (request.getBillingCyclePreference() != null) {
+            property.setBillingCyclePreference(request.getBillingCyclePreference());
+        }
 
         Property updatedProperty = propertyRepository.save(property);
         return PropertyResponse.fromEntity(updatedProperty);

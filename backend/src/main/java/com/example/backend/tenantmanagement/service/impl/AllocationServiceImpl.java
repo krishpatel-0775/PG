@@ -9,6 +9,12 @@ import com.example.backend.tenantmanagement.entity.Allocation;
 import com.example.backend.tenantmanagement.entity.AllocationStatus;
 import com.example.backend.tenantmanagement.repository.AllocationRepository;
 import com.example.backend.tenantmanagement.service.AllocationService;
+import com.example.backend.financemanagement.entity.Invoice;
+import com.example.backend.financemanagement.entity.InvoiceStatus;
+import com.example.backend.financemanagement.entity.InvoiceType;
+import com.example.backend.financemanagement.repository.InvoiceRepository;
+import com.example.backend.propertymanagement.entity.BillingCycleType;
+import com.example.backend.propertymanagement.entity.Property;
 import com.example.backend.usermanagement.entity.Role;
 import com.example.backend.usermanagement.entity.User;
 import com.example.backend.usermanagement.repository.UserRepository;
@@ -18,7 +24,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,11 +42,14 @@ import java.util.stream.Collectors;
 @Transactional
 public class AllocationServiceImpl implements AllocationService {
 
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMM-yyyy");
+
     private final AllocationRepository allocationRepository;
     private final BedRepository bedRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.example.backend.communication.service.NotificationService notificationService;
+    private final InvoiceRepository invoiceRepository;
 
     /** Allocations in ACTIVE, NOTICE_REQUESTED, or NOTICE_SERVED status represent current residents. */
     private static final List<AllocationStatus> RESIDENT_STATUSES =
@@ -46,12 +59,14 @@ public class AllocationServiceImpl implements AllocationService {
                                  BedRepository bedRepository,
                                  UserRepository userRepository,
                                  PasswordEncoder passwordEncoder,
-                                 com.example.backend.communication.service.NotificationService notificationService) {
+                                 com.example.backend.communication.service.NotificationService notificationService,
+                                 InvoiceRepository invoiceRepository) {
         this.allocationRepository = allocationRepository;
         this.bedRepository = bedRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.notificationService = notificationService;
+        this.invoiceRepository = invoiceRepository;
     }
 
     /**
@@ -178,6 +193,38 @@ public class AllocationServiceImpl implements AllocationService {
                 .build();
 
         Allocation savedAllocation = allocationRepository.save(allocation);
+
+        // 7. Check property billing cycle preference
+        Property property = bed.getRoom() != null ? bed.getRoom().getProperty() : null;
+        BillingCycleType cyclePreference = property != null && property.getBillingCyclePreference() != null
+                ? property.getBillingCyclePreference()
+                : BillingCycleType.ANNIVERSARY;
+
+        if (cyclePreference == BillingCycleType.FIRST_OF_MONTH) {
+            LocalDate checkInDate = savedAllocation.getCheckInDate();
+            int totalDaysInMonth = YearMonth.from(checkInDate).lengthOfMonth();
+            int daysRemaining = totalDaysInMonth - checkInDate.getDayOfMonth() + 1;
+
+            BigDecimal perDiem = savedAllocation.getMonthlyRent()
+                    .divide(BigDecimal.valueOf(totalDaysInMonth), 6, RoundingMode.HALF_UP);
+            BigDecimal proratedRent = perDiem
+                    .multiply(BigDecimal.valueOf(daysRemaining))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            Invoice proratedInvoice = Invoice.builder()
+                    .allocation(savedAllocation)
+                    .invoiceType(InvoiceType.RENT)
+                    .invoiceDate(checkInDate)
+                    .dueDate(checkInDate.plusDays(5))
+                    .totalAmount(proratedRent)
+                    .amountPaid(BigDecimal.ZERO)
+                    .status(InvoiceStatus.UNPAID)
+                    .invoiceMonth(checkInDate.format(MONTH_FORMATTER))
+                    .build();
+
+            Invoice savedInvoice = invoiceRepository.save(proratedInvoice);
+            notificationService.sendInvoiceGeneratedNotification(savedInvoice);
+        }
 
         return AllocationResponse.fromEntity(savedAllocation);
     }
