@@ -91,11 +91,12 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
     }
   };
 
-  // Lookup existing user by Email address onBlur
-  const handleEmailBlur = async () => {
-    const email = formData.tenantEmail.trim().toLowerCase();
-    // Validate minimal length and email structure
-    if (!email || !email.includes("@") || email.length < 5) {
+  // Lookup existing user by Mobile Phone number onBlur
+  const handlePhoneBlur = async () => {
+    const rawPhone = (formData.tenantPhone || "").trim();
+    // Validate minimal length (at least 7 characters)
+    const cleanPhone = rawPhone.replace(/\s+/g, "");
+    if (!cleanPhone || cleanPhone.length < 7) {
       setLookupStatus(null);
       return;
     }
@@ -103,12 +104,14 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
     setLookupLoading(true);
     setErrorMessage("");
     try {
-      const response = await api.get(`/users/lookup?email=${encodeURIComponent(email)}`);
+      const response = await api.get(`/users/lookup?phone=${encodeURIComponent(cleanPhone)}`);
       if (response.data) {
+        const user = response.data;
+        const isTempEmail = user.email && (user.email.includes("@temp.") || user.email.includes("shadow-"));
         setFormData((prev) => ({
           ...prev,
-          tenantName: response.data.name || prev.tenantName,
-          tenantPhone: response.data.phone || prev.tenantPhone,
+          tenantName: user.name || prev.tenantName,
+          tenantEmail: (!isTempEmail && user.email) ? user.email : prev.tenantEmail,
         }));
         setLookupStatus("FOUND");
       }
@@ -129,7 +132,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
       ...prev,
       [name]: value,
     }));
-    if (name === "tenantEmail") {
+    if (name === "tenantPhone") {
       setLookupStatus(null);
     }
     if (errorMessage) setErrorMessage("");
@@ -139,13 +142,23 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
   const handleAssignTenant = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (!formData.tenantPhone?.trim()) {
+      setErrorMessage("Please enter the tenant's mobile number.");
+      return;
+    }
+    if (!formData.tenantName?.trim()) {
+      setErrorMessage("Please enter the tenant's full name.");
+      return;
+    }
+
     setActionLoading(true);
 
     try {
       await api.post("/allocations", {
-        tenantEmail: formData.tenantEmail.trim().toLowerCase(),
+        tenantPhone: formData.tenantPhone.trim(),
         tenantName: formData.tenantName.trim(),
-        tenantPhone: formData.tenantPhone?.trim() || null,
+        tenantEmail: formData.tenantEmail?.trim().toLowerCase() || null,
         bedId: bed.id,
         checkInDate: formData.checkInDate,
         depositAmount: Number(formData.depositAmount),
@@ -316,20 +329,42 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                     )}
                   </div>
 
-                  {/* Move-Out Notice Alert if Active */}
+                  {/* Move-Out Notice Alert: Pending Request */}
+                  {allocation.status === "NOTICE_REQUESTED" && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs">
+                      <Clock className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5 animate-pulse" />
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-purple-900 flex items-center gap-2">
+                          <span>Move-Out Request Pending</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-200/80 text-purple-800">
+                            AWAITING APPROVAL
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-purple-800 leading-relaxed">
+                          Tenant requested move-out on <strong>{allocation.plannedCheckoutDate}</strong>. Go to the Allocations page to review and choose deposit handling policy.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Move-Out Notice Alert: Approved */}
                   {allocation.status === "NOTICE_SERVED" && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs">
                       <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
                         <div className="font-bold text-amber-900 flex items-center gap-2">
-                          <span>Move-Out Notice Active</span>
+                          <span>Move-Out Notice Approved</span>
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-800">
                             NOTICE SERVED
                           </span>
                         </div>
                         <p className="text-[11px] text-amber-800 leading-relaxed">
-                          Tenant served notice on <strong>{allocation.noticeServedDate || "recently"}</strong>. Planned move-out date:{" "}
-                          <strong>{allocation.plannedCheckoutDate}</strong>.
+                          Planned departure: <strong>{allocation.plannedCheckoutDate}</strong>. Policy:{" "}
+                          <strong>
+                            {allocation.depositHandlingPolicy === "OFFSET_RENT"
+                              ? "Offset Rent with Deposit"
+                              : "Refund Deposit at Checkout"}
+                          </strong>.
                         </p>
                       </div>
                     </div>
@@ -398,21 +433,21 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
             </>
           )}
 
-          {/* VACANT BED ASSIGNMENT FORM (EMAIL-FIRST LOGIC) */}
+          {/* VACANT BED ASSIGNMENT FORM (PHONE-FIRST LOGIC) */}
           {isVacant && (
             <form onSubmit={handleAssignTenant} className="space-y-4" suppressHydrationWarning>
-              {/* Tenant Email Address (Primary Key) */}
+              {/* Tenant Mobile Number (Primary Key) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label
-                    htmlFor="tenantEmail"
+                    htmlFor="tenantPhone"
                     className="block text-xs font-semibold text-slate-700"
                   >
-                    Tenant Email Address *
+                    Tenant Mobile Number *
                   </label>
                   {lookupLoading && (
                     <span className="text-[11px] text-indigo-600 font-medium flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Checking email...
+                      <Loader2 className="w-3 h-3 animate-spin" /> Checking phone...
                     </span>
                   )}
                   {lookupStatus === "FOUND" && (
@@ -428,17 +463,17 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                 </div>
                 <div className="relative rounded-xl shadow-xs">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="h-4 w-4" />
+                    <Phone className="h-4 w-4" />
                   </div>
                   <input
-                    id="tenantEmail"
-                    name="tenantEmail"
-                    type="email"
+                    id="tenantPhone"
+                    name="tenantPhone"
+                    type="tel"
                     required
-                    value={formData.tenantEmail}
+                    value={formData.tenantPhone}
                     onChange={handleChange}
-                    onBlur={handleEmailBlur}
-                    placeholder="e.g. ansh@gmail.com"
+                    onBlur={handlePhoneBlur}
+                    placeholder="e.g. 9876543210"
                     className="block w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs transition-all"
                   />
                 </div>
@@ -447,7 +482,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                 </p>
               </div>
 
-              {/* Full Name & Optional Phone Number */}
+              {/* Full Name & Optional Email Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label
@@ -475,22 +510,22 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
 
                 <div>
                   <label
-                    htmlFor="tenantPhone"
+                    htmlFor="tenantEmail"
                     className="block text-xs font-semibold text-slate-700 mb-1.5"
                   >
-                    Tenant Mobile Number (Optional)
+                    Tenant Email Address (Optional)
                   </label>
                   <div className="relative rounded-xl shadow-xs">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                      <Phone className="h-4 w-4" />
+                      <Mail className="h-4 w-4" />
                     </div>
                     <input
-                      id="tenantPhone"
-                      name="tenantPhone"
-                      type="tel"
-                      value={formData.tenantPhone}
+                      id="tenantEmail"
+                      name="tenantEmail"
+                      type="email"
+                      value={formData.tenantEmail}
                       onChange={handleChange}
-                      placeholder="e.g. 9876543210"
+                      placeholder="e.g. ansh@gmail.com"
                       className="block w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-xs transition-all"
                     />
                   </div>
@@ -580,7 +615,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
               <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-900 flex items-start gap-2">
                 <Info className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  If this tenant is not yet registered, a shadow profile linked to this email address will be created. When they sign up using this email, their account will sync automatically.
+                  If this tenant is not yet registered, a shadow profile linked to this mobile number will be created. When they sign up using this mobile number or email, their account will sync automatically.
                 </span>
               </div>
 

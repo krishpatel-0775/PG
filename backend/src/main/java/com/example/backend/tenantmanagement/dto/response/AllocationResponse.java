@@ -2,6 +2,7 @@ package com.example.backend.tenantmanagement.dto.response;
 
 import com.example.backend.tenantmanagement.entity.Allocation;
 import com.example.backend.tenantmanagement.entity.AllocationStatus;
+import com.example.backend.tenantmanagement.entity.DepositHandlingPolicy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,6 +40,9 @@ public class AllocationResponse {
     private AllocationStatus status;
     private LocalDate plannedCheckoutDate;
     private LocalDate noticeServedDate;
+    private DepositHandlingPolicy depositHandlingPolicy;
+    private LocalDate noticeApprovalDate;
+    private String noticeRejectionReason;
 
     /**
      * Factory method mapping an Allocation entity to AllocationResponse DTO.
@@ -72,6 +76,9 @@ public class AllocationResponse {
                 .status(allocation.getStatus())
                 .plannedCheckoutDate(allocation.getPlannedCheckoutDate())
                 .noticeServedDate(allocation.getNoticeServedDate())
+                .depositHandlingPolicy(allocation.getDepositHandlingPolicy())
+                .noticeApprovalDate(allocation.getNoticeApprovalDate())
+                .noticeRejectionReason(allocation.getNoticeRejectionReason())
                 .build();
     }
 }

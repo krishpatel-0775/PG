@@ -9,8 +9,10 @@ import com.example.backend.financemanagement.repository.PaymentRepository;
 import com.example.backend.propertymanagement.entity.Bed;
 import com.example.backend.propertymanagement.entity.BedStatus;
 import com.example.backend.propertymanagement.repository.BedRepository;
+import com.example.backend.tenantmanagement.dto.request.ApproveNoticeRequest;
 import com.example.backend.tenantmanagement.dto.request.DamageItemRequest;
 import com.example.backend.tenantmanagement.dto.request.FinalizeCheckoutRequest;
+import com.example.backend.tenantmanagement.dto.request.RejectNoticeRequest;
 import com.example.backend.tenantmanagement.dto.request.ServeNoticeRequest;
 import com.example.backend.tenantmanagement.dto.response.AllocationResponse;
 import com.example.backend.tenantmanagement.dto.response.CheckoutClearanceResponse;
@@ -111,13 +113,70 @@ public class CheckoutServiceImpl implements CheckoutService {
             }
         }
 
-        allocation.setStatus(AllocationStatus.NOTICE_SERVED);
+        allocation.setStatus(AllocationStatus.NOTICE_REQUESTED);
         allocation.setPlannedCheckoutDate(request.getPlannedCheckoutDate());
         allocation.setNoticeServedDate(LocalDate.now());
+        allocation.setNoticeRejectionReason(null);
         allocationRepository.save(allocation);
 
-        log.info("Notice served for allocation {} (tenant: {}). Planned checkout: {}",
+        log.info("Move-out notice requested for allocation {} (tenant: {}). Planned checkout: {}",
                 allocationId, allocation.getTenant().getEmail(), request.getPlannedCheckoutDate());
+
+        return AllocationResponse.fromEntity(allocation);
+    }
+
+    @Override
+    @Transactional
+    public AllocationResponse approveNotice(Long allocationId,
+                                           ApproveNoticeRequest request,
+                                           String callerEmail,
+                                           boolean isSuperAdmin) {
+        Allocation allocation = resolveAllocation(allocationId);
+        verifyOwnerOrAdminAccess(allocation, callerEmail, isSuperAdmin);
+
+        if (allocation.getStatus() != AllocationStatus.NOTICE_REQUESTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot approve notice for allocation in status: " + allocation.getStatus()
+                            + ". Only allocations with NOTICE_REQUESTED status can be approved.");
+        }
+
+        allocation.setStatus(AllocationStatus.NOTICE_SERVED);
+        allocation.setDepositHandlingPolicy(request.getDepositHandlingPolicy());
+        allocation.setNoticeApprovalDate(LocalDate.now());
+        allocation.setNoticeRejectionReason(null);
+        allocationRepository.save(allocation);
+
+        log.info("Move-out notice approved for allocation {} (tenant: {}). Policy: {}",
+                allocationId, allocation.getTenant().getEmail(), request.getDepositHandlingPolicy());
+
+        return AllocationResponse.fromEntity(allocation);
+    }
+
+    @Override
+    @Transactional
+    public AllocationResponse rejectNotice(Long allocationId,
+                                          RejectNoticeRequest request,
+                                          String callerEmail,
+                                          boolean isSuperAdmin) {
+        Allocation allocation = resolveAllocation(allocationId);
+        verifyOwnerOrAdminAccess(allocation, callerEmail, isSuperAdmin);
+
+        if (allocation.getStatus() != AllocationStatus.NOTICE_REQUESTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot reject notice for allocation in status: " + allocation.getStatus()
+                            + ". Only allocations with NOTICE_REQUESTED status can be rejected.");
+        }
+
+        allocation.setStatus(AllocationStatus.ACTIVE);
+        allocation.setNoticeRejectionReason(request.getReason());
+        allocation.setPlannedCheckoutDate(null);
+        allocation.setNoticeServedDate(null);
+        allocation.setDepositHandlingPolicy(null);
+        allocation.setNoticeApprovalDate(null);
+        allocationRepository.save(allocation);
+
+        log.info("Move-out notice rejected for allocation {} (tenant: {}). Reason: {}",
+                allocationId, allocation.getTenant().getEmail(), request.getReason());
 
         return AllocationResponse.fromEntity(allocation);
     }

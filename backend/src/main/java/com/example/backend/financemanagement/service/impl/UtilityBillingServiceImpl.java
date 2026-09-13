@@ -65,7 +65,7 @@ public class UtilityBillingServiceImpl implements UtilityBillingService {
 
     /** Statuses considered "active" for utility billing (deposit-offset tenants also get utility bills). */
     private static final List<AllocationStatus> BILLABLE_STATUSES =
-            List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED);
+            List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_REQUESTED, AllocationStatus.NOTICE_SERVED);
 
     private final RoomRepository roomRepository;
     private final MeterReadingRepository meterReadingRepository;

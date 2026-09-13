@@ -66,8 +66,27 @@ public class Allocation {
 
     /**
      * The date on which the tenant formally served their move-out notice.
-     * Automatically set to {@code LocalDate.now()} when status transitions to {@link AllocationStatus#NOTICE_SERVED}.
+     * Automatically set to {@code LocalDate.now()} when notice request is submitted.
      */
     @Column(name = "notice_served_date")
     private LocalDate noticeServedDate;
+
+    /**
+     * The policy selected by the owner on approval: OFFSET_RENT or REFUND_AT_CHECKOUT.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deposit_handling_policy", length = 30)
+    private DepositHandlingPolicy depositHandlingPolicy;
+
+    /**
+     * The date on which the owner approved the notice request.
+     */
+    @Column(name = "notice_approval_date")
+    private LocalDate noticeApprovalDate;
+
+    /**
+     * Explanation provided by the owner if the notice request is rejected.
+     */
+    @Column(name = "notice_rejection_reason", length = 500)
+    private String noticeRejectionReason;
 }

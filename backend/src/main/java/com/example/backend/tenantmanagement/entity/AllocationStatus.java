@@ -11,6 +11,7 @@ package com.example.backend.tenantmanagement.entity;
  */
 public enum AllocationStatus {
     ACTIVE,
+    NOTICE_REQUESTED,
     NOTICE_SERVED,
     VACATED,
     COMPLETED

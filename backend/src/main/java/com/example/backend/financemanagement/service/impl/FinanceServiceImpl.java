@@ -74,7 +74,7 @@ public class FinanceServiceImpl implements FinanceService {
         log.info("Starting daily anniversary billing job for date: {}", today);
 
         List<Allocation> activeAllocations = allocationRepository.findByStatusIn(
-                List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED));
+                List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_REQUESTED, AllocationStatus.NOTICE_SERVED));
         List<Invoice> generatedInvoices = new ArrayList<>();
 
         for (Allocation allocation : activeAllocations) {
@@ -111,8 +111,9 @@ public class FinanceServiceImpl implements FinanceService {
 
                     Invoice savedInvoice = invoiceRepository.save(invoice);
 
-                    // --- NOTICE_SERVED: Auto-pay rent invoice from security deposit ---
-                    if (allocation.getStatus() == AllocationStatus.NOTICE_SERVED) {
+                    // --- NOTICE_SERVED with OFFSET_RENT policy: Auto-pay rent invoice from security deposit ---
+                    if (allocation.getStatus() == AllocationStatus.NOTICE_SERVED
+                            && allocation.getDepositHandlingPolicy() == com.example.backend.tenantmanagement.entity.DepositHandlingPolicy.OFFSET_RENT) {
                         BigDecimal rentAmount = allocation.getMonthlyRent();
                         BigDecimal currentDeposit = allocation.getDepositAmount() != null
                                 ? allocation.getDepositAmount() : BigDecimal.ZERO;

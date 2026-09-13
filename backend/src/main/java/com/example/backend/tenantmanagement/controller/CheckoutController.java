@@ -1,6 +1,8 @@
 package com.example.backend.tenantmanagement.controller;
 
+import com.example.backend.tenantmanagement.dto.request.ApproveNoticeRequest;
 import com.example.backend.tenantmanagement.dto.request.FinalizeCheckoutRequest;
+import com.example.backend.tenantmanagement.dto.request.RejectNoticeRequest;
 import com.example.backend.tenantmanagement.dto.request.ServeNoticeRequest;
 import com.example.backend.tenantmanagement.dto.response.AllocationResponse;
 import com.example.backend.tenantmanagement.dto.response.CheckoutClearanceResponse;
@@ -18,7 +20,9 @@ import org.springframework.web.bind.annotation.*;
  *
  * <p>Endpoints:
  * <ul>
- *   <li>{@code POST /api/allocations/{id}/notice} — Tenant or owner serves move-out notice</li>
+ *   <li>{@code POST /api/allocations/{id}/notice} — Tenant submits move-out request</li>
+ *   <li>{@code POST /api/allocations/{id}/notice/approve} — Owner approves notice and chooses deposit policy</li>
+ *   <li>{@code POST /api/allocations/{id}/notice/reject} — Owner rejects notice request</li>
  *   <li>{@code GET /api/checkout/{allocationId}/summary} — Owner views pre-settlement summary</li>
  *   <li>{@code POST /api/checkout/{allocationId}/finalize} — Owner finalizes checkout and settles deposit</li>
  *   <li>{@code GET /api/checkout/tenant/my-settlement} — Tenant views their final settlement statement</li>
@@ -35,14 +39,15 @@ public class CheckoutController {
     }
 
     /**
-     * Serves a move-out notice for an allocation.
+     * Serves a move-out notice request for an allocation.
      * The planned checkout date must be at least 30 days from today.
      * Accessible by the tenant themselves, the property owner, or a SUPER_ADMIN.
+     * Transitions allocation to NOTICE_REQUESTED.
      *
      * @param id             Allocation ID
      * @param request        Notice request with planned checkout date
      * @param authentication Caller (TENANT, PG_OWNER, or SUPER_ADMIN)
-     * @return Updated AllocationResponse with NOTICE_SERVED status
+     * @return Updated AllocationResponse with NOTICE_REQUESTED status
      */
     @PostMapping("/api/allocations/{id}/notice")
     @PreAuthorize("hasAnyRole('TENANT', 'PG_OWNER', 'SUPER_ADMIN')")
@@ -53,6 +58,48 @@ public class CheckoutController {
         String callerEmail = authentication.getName();
         boolean isSuperAdmin = isSuperAdmin(authentication);
         AllocationResponse response = checkoutService.serveNotice(id, request, callerEmail, isSuperAdmin);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Approves a tenant's move-out notice request with the specified deposit handling policy.
+     * Owner or Super Admin only. Transitions allocation to NOTICE_SERVED.
+     *
+     * @param id             Allocation ID
+     * @param request        Approval request with deposit policy
+     * @param authentication Authenticated PG Owner / Super Admin
+     * @return Updated AllocationResponse with NOTICE_SERVED status
+     */
+    @PostMapping("/api/allocations/{id}/notice/approve")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<AllocationResponse> approveNotice(
+            @PathVariable Long id,
+            @Valid @RequestBody ApproveNoticeRequest request,
+            Authentication authentication) {
+        String callerEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        AllocationResponse response = checkoutService.approveNotice(id, request, callerEmail, isSuperAdmin);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Rejects a tenant's move-out notice request and provides a reason.
+     * Owner or Super Admin only. Reverts allocation status to ACTIVE.
+     *
+     * @param id             Allocation ID
+     * @param request        Rejection request with reason
+     * @param authentication Authenticated PG Owner / Super Admin
+     * @return Updated AllocationResponse with ACTIVE status
+     */
+    @PostMapping("/api/allocations/{id}/notice/reject")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<AllocationResponse> rejectNotice(
+            @PathVariable Long id,
+            @Valid @RequestBody RejectNoticeRequest request,
+            Authentication authentication) {
+        String callerEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        AllocationResponse response = checkoutService.rejectNotice(id, request, callerEmail, isSuperAdmin);
         return ResponseEntity.ok(response);
     }
 

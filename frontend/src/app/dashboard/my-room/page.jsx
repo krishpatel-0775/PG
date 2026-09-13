@@ -88,7 +88,7 @@ export default function MyRoomPage() {
       });
       setAllocation(res.data);
       setIsNoticeModalOpen(false);
-      setNoticeSuccess("Your move-out notice has been officially submitted! Security deposit offset policy applied.");
+      setNoticeSuccess("Your move-out request has been submitted and is awaiting approval from your property owner.");
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -172,10 +172,17 @@ export default function MyRoomPage() {
               </button>
             )}
 
+            {allocation.status === "NOTICE_REQUESTED" && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-800 bg-purple-50 border border-purple-200 shadow-xs">
+                <Clock className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+                <span>Notice Awaiting Approval</span>
+              </div>
+            )}
+
             {allocation.status === "NOTICE_SERVED" && (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 border border-amber-300 shadow-xs">
                 <Clock className="w-3.5 h-3.5 text-amber-600" />
-                <span>Notice Served</span>
+                <span>Notice Approved</span>
               </div>
             )}
 
@@ -210,6 +217,19 @@ export default function MyRoomPage() {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Notice Rejection Alert if present */}
+      {allocation?.noticeRejectionReason && allocation?.status === "ACTIVE" && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex items-start gap-3 shadow-xs animate-in fade-in">
+          <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <div className="font-bold">Previous Move-Out Request Declined</div>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Reason: {allocation.noticeRejectionReason}
+            </p>
+          </div>
         </div>
       )}
 
@@ -299,7 +319,17 @@ export default function MyRoomPage() {
                 </div>
               </div>
 
-              {allocation.status === "NOTICE_SERVED" ? (
+              {allocation.status === "NOTICE_REQUESTED" ? (
+                <div className="flex flex-col sm:items-end gap-1">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200 self-start sm:self-auto">
+                    <Clock className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
+                    Move-out requested for {allocation.plannedCheckoutDate}
+                  </span>
+                  <span className="text-[11px] font-semibold text-purple-700">
+                    Awaiting Owner Review
+                  </span>
+                </div>
+              ) : allocation.status === "NOTICE_SERVED" ? (
                 <div className="flex flex-col sm:items-end gap-1">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 self-start sm:self-auto">
                     <Clock className="w-3.5 h-3.5 text-amber-600" />
@@ -319,7 +349,26 @@ export default function MyRoomPage() {
               )}
             </div>
 
-            {/* Notice Policy Alert Banner if NOTICE_SERVED */}
+            {/* Banner for NOTICE_REQUESTED */}
+            {allocation.status === "NOTICE_REQUESTED" && (
+              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-purple-900 flex items-center gap-2">
+                      <span>Move-Out Notice Pending Owner Approval</span>
+                    </div>
+                    <p className="text-xs text-purple-800/90 mt-1 leading-relaxed">
+                      Your move-out request for <strong>{allocation.plannedCheckoutDate}</strong> is under review. Your PG owner will approve the notice and confirm how your deposit will be handled (rent offset or checkout refund).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Banner for NOTICE_SERVED */}
             {allocation.status === "NOTICE_SERVED" && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -328,7 +377,7 @@ export default function MyRoomPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold text-amber-900 flex items-center gap-2">
-                      <span>Move-Out Notice Active</span>
+                      <span>Move-Out Notice Approved</span>
                       {getDaysRemaining(allocation.plannedCheckoutDate) !== null && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-mono font-bold">
                           {getDaysRemaining(allocation.plannedCheckoutDate)} days left
@@ -336,7 +385,15 @@ export default function MyRoomPage() {
                       )}
                     </div>
                     <p className="text-xs text-amber-800/90 mt-1 leading-relaxed">
-                      Standard notice policy active. Your security deposit of <strong>₹{Number(allocation.depositAmount).toLocaleString("en-IN")}</strong> will automatically offset your final month&apos;s rent invoice. Inspection and checkout settlement will be finalized on your departure date.
+                      {allocation.depositHandlingPolicy === "OFFSET_RENT" ? (
+                        <>
+                          <strong>Deposit Policy: Rent Offset.</strong> Your security deposit of <strong>₹{Number(allocation.depositAmount).toLocaleString("en-IN")}</strong> will automatically offset upcoming rent invoice(s). Any remaining balance will be settled on checkout day.
+                        </>
+                      ) : (
+                        <>
+                          <strong>Deposit Policy: Refund at Checkout.</strong> Please continue paying monthly rent invoices normally. Your full security deposit (₹{Number(allocation.depositAmount).toLocaleString("en-IN")}) will be settled and refunded on checkout day after inspection.
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

@@ -38,9 +38,9 @@ public class AllocationServiceImpl implements AllocationService {
     private final PasswordEncoder passwordEncoder;
     private final com.example.backend.communication.service.NotificationService notificationService;
 
-    /** Allocations in either ACTIVE or NOTICE_SERVED status represent current residents. */
+    /** Allocations in ACTIVE, NOTICE_REQUESTED, or NOTICE_SERVED status represent current residents. */
     private static final List<AllocationStatus> RESIDENT_STATUSES =
-            List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_SERVED);
+            List.of(AllocationStatus.ACTIVE, AllocationStatus.NOTICE_REQUESTED, AllocationStatus.NOTICE_SERVED);
 
     public AllocationServiceImpl(AllocationRepository allocationRepository,
                                  BedRepository bedRepository,
@@ -76,17 +76,17 @@ public class AllocationServiceImpl implements AllocationService {
                     ? request.getTenantPhone().trim()
                     : null;
 
-            if (tenantEmail == null && tenantPhone == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant email address or phone number is required.");
+            if (tenantPhone == null && tenantEmail == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant mobile number or email address is required.");
             }
 
-            // Search by Email first, then by Phone
+            // Search by Phone first, then by Email
             Optional<User> existingUserOpt = Optional.empty();
-            if (tenantEmail != null) {
-                existingUserOpt = userRepository.findByEmail(tenantEmail);
-            }
-            if (existingUserOpt.isEmpty() && tenantPhone != null) {
+            if (tenantPhone != null) {
                 existingUserOpt = userRepository.findByPhone(tenantPhone);
+            }
+            if (existingUserOpt.isEmpty() && tenantEmail != null) {
+                existingUserOpt = userRepository.findByEmail(tenantEmail);
             }
 
             if (existingUserOpt.isPresent()) {
@@ -96,16 +96,19 @@ public class AllocationServiceImpl implements AllocationService {
                     if (request.getTenantName() != null && !request.getTenantName().trim().isEmpty()) {
                         tenant.setName(request.getTenantName().trim());
                     }
-                    if (tenantEmail != null) {
-                        tenant.setEmail(tenantEmail);
-                    }
                     if (tenantPhone != null) {
                         tenant.setPhone(tenantPhone);
+                    }
+                    if (tenantEmail != null) {
+                        Optional<User> existingEmailUser = userRepository.findByEmail(tenantEmail);
+                        if (existingEmailUser.isEmpty() || existingEmailUser.get().getId().equals(tenant.getId())) {
+                            tenant.setEmail(tenantEmail);
+                        }
                     }
                     tenant = userRepository.save(tenant);
                 }
             } else {
-                // Provision a new Shadow User linked to this email/phone
+                // Provision a new Shadow User linked to this phone/email
                 String email = (tenantEmail != null)
                         ? tenantEmail
                         : "shadow-" + UUID.randomUUID() + "@temp.pgmanager.com";

@@ -21,6 +21,7 @@ import {
   Clock,
 } from "lucide-react";
 import CheckoutClearanceModal from "@/components/CheckoutClearanceModal";
+import NoticeReviewModal from "@/components/NoticeReviewModal";
 
 export default function AllocationsListPage() {
   const router = useRouter();
@@ -34,6 +35,10 @@ export default function AllocationsListPage() {
   // Clearance Modal State
   const [selectedClearanceAlloc, setSelectedClearanceAlloc] = useState(null);
   const [isClearanceOpen, setIsClearanceOpen] = useState(false);
+
+  // Move-Out Notice Review Modal State
+  const [selectedNoticeAlloc, setSelectedNoticeAlloc] = useState(null);
+  const [isNoticeReviewOpen, setIsNoticeReviewOpen] = useState(false);
 
   const handleClearanceSuccess = (data) => {
     setSuccessMessage(`Bed ${data.bedNumber || ""} is now VACANT • Clearance & settlement finalized for ${data.tenantName || "tenant"}.`);
@@ -330,17 +335,36 @@ export default function AllocationsListPage() {
 
                     {/* Status */}
                     <td className="px-6 py-4">
-                      {item.status === "NOTICE_SERVED" ? (
+                      {item.status === "NOTICE_REQUESTED" ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-purple-50 text-purple-800 border border-purple-200">
+                            <Clock className="w-3 h-3 text-purple-600 animate-pulse" />
+                            Notice Requested
+                          </span>
+                          {item.plannedCheckoutDate && (
+                            <div className="text-[10px] text-purple-700 font-mono">
+                              Req: {item.plannedCheckoutDate}
+                            </div>
+                          )}
+                        </div>
+                      ) : item.status === "NOTICE_SERVED" ? (
                         <div className="space-y-1">
                           <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-300">
                             <Clock className="w-3 h-3 text-amber-600" />
                             Notice Served
                           </span>
-                          {item.plannedCheckoutDate && (
-                            <div className="text-[10px] text-amber-700 font-mono">
-                              Depart: {item.plannedCheckoutDate}
-                            </div>
-                          )}
+                          <div className="flex flex-col gap-0.5 text-[10px]">
+                            {item.plannedCheckoutDate && (
+                              <span className="text-amber-700 font-mono">
+                                Depart: {item.plannedCheckoutDate}
+                              </span>
+                            )}
+                            {item.depositHandlingPolicy && (
+                              <span className="font-semibold text-slate-500">
+                                {item.depositHandlingPolicy === "OFFSET_RENT" ? "• Rent Offset" : "• Refund at Exit"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ) : item.status === "VACATED" ? (
                         <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-slate-100 text-slate-600 border border-slate-200">
@@ -354,9 +378,21 @@ export default function AllocationsListPage() {
                       )}
                     </td>
 
-                    {/* Action: Process Checkout */}
+                    {/* Actions */}
                     <td className="px-6 py-4 text-right">
-                      {item.status !== "VACATED" && item.status !== "COMPLETED" ? (
+                      {item.status === "NOTICE_REQUESTED" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedNoticeAlloc(item);
+                            setIsNoticeReviewOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-xs cursor-pointer transition-all"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Review Notice</span>
+                        </button>
+                      ) : item.status !== "VACATED" && item.status !== "COMPLETED" ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -390,6 +426,17 @@ export default function AllocationsListPage() {
         onClose={() => setIsClearanceOpen(false)}
         allocation={selectedClearanceAlloc}
         onSuccess={handleClearanceSuccess}
+      />
+
+      {/* Move-Out Notice Review & Deposit Decision Modal */}
+      <NoticeReviewModal
+        isOpen={isNoticeReviewOpen}
+        onClose={() => setIsNoticeReviewOpen(false)}
+        allocation={selectedNoticeAlloc}
+        onSuccess={(msg) => {
+          setSuccessMessage(msg);
+          fetchAllocations();
+        }}
       />
     </div>
   );
