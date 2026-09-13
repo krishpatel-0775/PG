@@ -20,6 +20,12 @@ public interface NotificationService {
 
     void markAllAsRead(String userEmail);
 
+    void deleteNotification(Long id, String userEmail);
+
+    void markSelectedAsRead(List<Long> ids, String userEmail);
+
+    void deleteSelected(List<Long> ids, String userEmail);
+
     void sendWelcomeNotification(User recipient, String role, String tempPassword);
 
     void sendInvoiceGeneratedNotification(Invoice invoice);

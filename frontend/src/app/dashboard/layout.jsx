@@ -112,6 +112,7 @@ export default function DashboardLayout({ children }) {
       badge: openComplaintsCount > 0 ? openComplaintsCount : null,
     },
     { name: "Notice Board", href: "/dashboard/announcements", icon: Megaphone },
+    { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   ];
 
   // Tenant Navigation Links
@@ -125,6 +126,7 @@ export default function DashboardLayout({ children }) {
       icon: Wrench,
       badge: openComplaintsCount > 0 ? openComplaintsCount : null,
     },
+    { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
   ];
 
   const isTenant = userRole === "ROLE_TENANT";

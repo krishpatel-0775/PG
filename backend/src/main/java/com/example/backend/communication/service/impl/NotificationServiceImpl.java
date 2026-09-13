@@ -86,6 +86,29 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
+    public void deleteNotification(Long id, String userEmail) {
+        User user = getUserByEmail(userEmail);
+        notificationRepository.deleteByIdAndRecipientId(id, user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void markSelectedAsRead(List<Long> ids, String userEmail) {
+        if (ids == null || ids.isEmpty()) return;
+        User user = getUserByEmail(userEmail);
+        notificationRepository.markSelectedAsReadByIds(ids, user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void deleteSelected(List<Long> ids, String userEmail) {
+        if (ids == null || ids.isEmpty()) return;
+        User user = getUserByEmail(userEmail);
+        notificationRepository.deleteSelectedByIds(ids, user.getId());
+    }
+
+    @Override
     public void sendWelcomeNotification(User recipient, String role, String tempPassword) {
         if (recipient == null) return;
         try {

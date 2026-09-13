@@ -1,9 +1,11 @@
 package com.example.backend.communication.listener;
 
+import com.example.backend.communication.dto.response.NotificationResponse;
 import com.example.backend.communication.entity.Notification;
 import com.example.backend.communication.event.NotificationEvent;
 import com.example.backend.communication.repository.NotificationRepository;
 import com.example.backend.communication.service.EmailService;
+import com.example.backend.communication.service.NotificationSseService;
 import com.example.backend.usermanagement.entity.User;
 import com.example.backend.usermanagement.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -27,13 +29,16 @@ public class NotificationEventListener {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final NotificationSseService notificationSseService;
 
     public NotificationEventListener(NotificationRepository notificationRepository,
                                      UserRepository userRepository,
-                                     EmailService emailService) {
+                                     EmailService emailService,
+                                     NotificationSseService notificationSseService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.notificationSseService = notificationSseService;
     }
 
     @Async
@@ -69,6 +74,12 @@ public class NotificationEventListener {
                 notificationRepository.save(notification);
                 log.info("Persisted in-app notification ID {} for user {} ({})",
                         notification.getId(), managedRecipient.getId(), managedRecipient.getEmail());
+
+                // 2. Broadcast Real-time Server-Sent Event (SSE) to active browser clients
+                notificationSseService.broadcastNotification(
+                        managedRecipient.getEmail(),
+                        NotificationResponse.fromEntity(notification)
+                );
             } else {
                 log.warn("Recipient user not found in database (ID: {}, Email: {}). Skipping in-app notification persistence.",
                         event.getRecipient().getId(), event.getRecipient().getEmail());

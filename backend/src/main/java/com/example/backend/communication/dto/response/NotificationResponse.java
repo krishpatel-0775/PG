@@ -1,6 +1,7 @@
 package com.example.backend.communication.dto.response;
 
 import com.example.backend.communication.entity.Notification;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,9 +22,15 @@ public class NotificationResponse {
     private String title;
     private String message;
     private String type;
+    @JsonProperty("isRead")
     private boolean isRead;
     private String actionUrl;
     private LocalDateTime createdAt;
+
+    @JsonProperty("isRead")
+    public boolean isRead() {
+        return isRead;
+    }
 
     public static NotificationResponse fromEntity(Notification notification) {
         if (notification == null) return null;
