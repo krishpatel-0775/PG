@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import {
   X,
@@ -19,7 +19,9 @@ import {
   Sparkles,
   ShieldCheck,
   Clock,
+  ArrowRightLeft,
 } from "lucide-react";
+import TransferBedModal from "@/components/TransferBedModal";
 
 export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }) {
   // Common states
@@ -27,6 +29,7 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   // Occupied bed state
   const [allocation, setAllocation] = useState(null);
@@ -47,49 +50,47 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
   // Reset or fetch allocation details when modal opens
   useEffect(() => {
     if (!isOpen || !bed) {
-      setAllocation(null);
-      setErrorMessage("");
-      setSuccessMessage("");
-      setLookupStatus(null);
       return;
     }
 
-    setErrorMessage("");
-    setSuccessMessage("");
-
     if (bed.status === "OCCUPIED") {
-      fetchOccupiedAllocation(bed.id);
+      let isMounted = true;
+      api.get(`/allocations/bed/${bed.id}`)
+        .then((res) => {
+          if (isMounted) setAllocation(res.data);
+        })
+        .catch((err) => {
+          if (isMounted) {
+            const msg =
+              err.response?.data?.message ||
+              err.response?.data?.detail ||
+              err.message ||
+              "Failed to load tenant allocation details.";
+            setErrorMessage(msg);
+          }
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
     } else if (bed.status === "VACANT") {
       // Pre-fill default monthly rent from room base rent if available
-      setFormData({
-        tenantPhone: "",
-        tenantName: "",
-        tenantEmail: "",
-        checkInDate: new Date().toLocaleDateString("en-CA"),
-        monthlyRent: room?.baseRent || "",
-        depositAmount: room?.baseRent ? room.baseRent : "",
+      queueMicrotask(() => {
+        setFormData({
+          tenantPhone: "",
+          tenantName: "",
+          tenantEmail: "",
+          checkInDate: new Date().toLocaleDateString("en-CA"),
+          monthlyRent: room?.baseRent || "",
+          depositAmount: room?.baseRent ? room.baseRent : "",
+        });
+        setLookupStatus(null);
       });
-      setLookupStatus(null);
     }
   }, [isOpen, bed, room]);
-
-  const fetchOccupiedAllocation = async (bedId) => {
-    setLoading(true);
-    setErrorMessage("");
-    try {
-      const response = await api.get(`/allocations/bed/${bedId}`);
-      setAllocation(response.data);
-    } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.detail ||
-        err.message ||
-        "Failed to load tenant allocation details.";
-      setErrorMessage(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Lookup existing user by Mobile Phone number onBlur
   const handlePhoneBlur = async () => {
@@ -396,33 +397,43 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
                     </span>
                   </div>
 
-                  {/* Checkout Button */}
-                  <div className="pt-3 border-t border-slate-200 flex justify-end gap-2.5">
+                  {/* Occupied Bed Actions */}
+                  <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
                     <button
                       type="button"
-                      onClick={onClose}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 bg-white border border-slate-200 shadow-xs transition-colors"
+                      onClick={() => setShowTransferModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 shadow-xs transition-all active:scale-[0.99]"
                     >
-                      Close
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Transfer Bed</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleCheckout}
-                      disabled={actionLoading}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-all active:scale-[0.99] disabled:opacity-50"
-                    >
-                      {actionLoading ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Checking out...</span>
-                        </>
-                      ) : (
-                        <>
-                          <LogOut className="w-3.5 h-3.5" />
-                          <span>Checkout Tenant</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 bg-white border border-slate-200 shadow-xs transition-colors"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCheckout}
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-xs transition-all active:scale-[0.99] disabled:opacity-50"
+                      >
+                        {actionLoading ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Checking out...</span>
+                          </>
+                        ) : (
+                          <>
+                            <LogOut className="w-3.5 h-3.5" />
+                            <span>Checkout</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -674,6 +685,20 @@ export default function BedActionModal({ isOpen, onClose, bed, room, onSuccess }
           )}
         </div>
       </div>
+
+      {/* Bed Transfer Modal for Occupied Bed */}
+      {allocation && (
+        <TransferBedModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          allocation={allocation}
+          onSuccess={() => {
+            setShowTransferModal(false);
+            if (onSuccess) onSuccess();
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 }

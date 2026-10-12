@@ -27,8 +27,12 @@ public class TenantProfileResponse {
     private boolean isShadowUser;
 
     // Stay Details
+    private Long allocationId;
+    private Long propertyId;
     private String propertyName;
+    private Long roomId;
     private String roomNumber;
+    private Long bedId;
     private String bedNumber;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;

@@ -1,6 +1,7 @@
 package com.example.backend.tenantmanagement.controller;
 
 import com.example.backend.tenantmanagement.dto.request.CreateAllocationRequest;
+import com.example.backend.tenantmanagement.dto.request.TransferBedRequest;
 import com.example.backend.tenantmanagement.dto.response.AllocationResponse;
 import com.example.backend.tenantmanagement.service.AllocationService;
 import jakarta.validation.Valid;
@@ -74,6 +75,22 @@ public class AllocationController {
         String userEmail = authentication.getName();
         boolean isSuperAdmin = isSuperAdmin(authentication);
         AllocationResponse response = allocationService.checkoutTenant(id, userEmail, isSuperAdmin);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Transfers an active tenant to a different vacant bed / room in 1-click.
+     * Carries forward deposit and active invoices seamlessly.
+     */
+    @PostMapping("/{id}/transfer")
+    @PreAuthorize("hasAnyRole('PG_OWNER', 'SUPER_ADMIN')")
+    public ResponseEntity<AllocationResponse> transferBed(
+            @PathVariable Long id,
+            @Valid @RequestBody TransferBedRequest request,
+            Authentication authentication) {
+        String userEmail = authentication.getName();
+        boolean isSuperAdmin = isSuperAdmin(authentication);
+        AllocationResponse response = allocationService.transferBed(id, request, userEmail, isSuperAdmin);
         return ResponseEntity.ok(response);
     }
 

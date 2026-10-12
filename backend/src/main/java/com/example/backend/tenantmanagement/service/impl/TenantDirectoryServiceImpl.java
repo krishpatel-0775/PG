@@ -162,8 +162,12 @@ public class TenantDirectoryServiceImpl implements TenantDirectoryService {
                 .collect(Collectors.toList());
 
         // Extract stay details
+        Long allocationId = null;
+        Long propertyId = null;
         String propertyName = null;
+        Long roomId = null;
         String roomNumber = null;
+        Long bedId = null;
         String bedNumber = null;
         LocalDate checkInDate = null;
         LocalDate checkOutDate = null;
@@ -172,10 +176,14 @@ public class TenantDirectoryServiceImpl implements TenantDirectoryService {
         String allocationStatus = null;
 
         if (primaryAllocation != null) {
+            allocationId = primaryAllocation.getId();
             var bed = primaryAllocation.getBed();
             var room = bed != null ? bed.getRoom() : null;
             var property = room != null ? room.getProperty() : null;
 
+            bedId = bed != null ? bed.getId() : null;
+            roomId = room != null ? room.getId() : null;
+            propertyId = property != null ? property.getId() : null;
             propertyName = property != null ? property.getName() : null;
             roomNumber = room != null ? room.getRoomNumber() : null;
             bedNumber = bed != null ? bed.getBedNumber() : null;
@@ -192,8 +200,12 @@ public class TenantDirectoryServiceImpl implements TenantDirectoryService {
                 .phone(tenant.getPhone())
                 .email(tenant.getEmail())
                 .isShadowUser(tenant.isShadowUser())
+                .allocationId(allocationId)
+                .propertyId(propertyId)
                 .propertyName(propertyName)
+                .roomId(roomId)
                 .roomNumber(roomNumber)
+                .bedId(bedId)
                 .bedNumber(bedNumber)
                 .checkInDate(checkInDate)
                 .checkOutDate(checkOutDate)

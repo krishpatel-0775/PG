@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, use } from "react";
+import { useEffect, useState, useMemo, useCallback, use } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import {
@@ -23,7 +23,9 @@ import {
   DoorClosed,
   AlertTriangle,
   FileText,
+  ArrowRightLeft,
 } from "lucide-react";
+import TransferBedModal from "@/components/TransferBedModal";
 
 export default function TenantProfilePage({ params }) {
   // Unwrap params using React.use() for Next.js App Router compatibility
@@ -33,14 +35,9 @@ export default function TenantProfilePage({ params }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
-  useEffect(() => {
-    if (tenantId) {
-      fetchTenantProfile();
-    }
-  }, [tenantId]);
-
-  const fetchTenantProfile = async () => {
+  const fetchTenantProfile = useCallback(async () => {
     setLoading(true);
     setErrorMessage("");
     try {
@@ -56,7 +53,33 @@ export default function TenantProfilePage({ params }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    let isMounted = true;
+
+    api.get(`/directory/tenants/${tenantId}`)
+      .then((res) => {
+        if (isMounted) setProfile(res.data);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        const backendMessage =
+          err.response?.data?.message ||
+          err.response?.data?.detail ||
+          err.message ||
+          "Failed to load tenant profile.";
+        setErrorMessage(backendMessage);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [tenantId]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return "N/A";
@@ -434,6 +457,23 @@ export default function TenantProfilePage({ params }) {
                 </span>
               </div>
             </div>
+
+            {/* Seamless Bed Transfer / Room Switching Action */}
+            {isActiveStay && profile.allocationId && (
+              <div className="pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowTransferModal(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 shadow-xs transition-all active:scale-[0.99]"
+                >
+                  <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                  <span>Switch Room / Transfer Bed</span>
+                </button>
+                <p className="text-[11px] text-slate-400 text-center mt-1.5">
+                  1-click transfer with deposit &amp; dues continuity
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -535,6 +575,30 @@ export default function TenantProfilePage({ params }) {
         </div>
       </section>
       {/* END: Two Column Section */}
+
+      {/* Bed Transfer Modal */}
+      {profile && (
+        <TransferBedModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          allocation={{
+            id: profile.allocationId,
+            tenantId: profile.tenantId,
+            tenantName: profile.name,
+            propertyId: profile.propertyId,
+            propertyName: profile.propertyName,
+            roomId: profile.roomId,
+            roomNumber: profile.roomNumber,
+            bedId: profile.bedId,
+            bedNumber: profile.bedNumber,
+            monthlyRent: profile.monthlyRent,
+            depositAmount: profile.depositAmount,
+          }}
+          onSuccess={() => {
+            fetchTenantProfile();
+          }}
+        />
+      )}
     </div>
   );
 }

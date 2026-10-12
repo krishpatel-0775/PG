@@ -326,6 +326,37 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
+    @Override
+    public void sendRoomTransferNotification(Allocation newAllocation, String oldRoomName, String oldBedName) {
+        if (newAllocation == null || newAllocation.getTenant() == null) return;
+        try {
+            User tenant = newAllocation.getTenant();
+            String roomNumber = (newAllocation.getBed() != null && newAllocation.getBed().getRoom() != null)
+                    ? newAllocation.getBed().getRoom().getRoomNumber() : "N/A";
+            String bedNumber = newAllocation.getBed() != null
+                    ? newAllocation.getBed().getBedNumber() : "N/A";
+            Property property = (newAllocation.getBed() != null && newAllocation.getBed().getRoom() != null)
+                    ? newAllocation.getBed().getRoom().getProperty() : null;
+            String propertyName = property != null ? property.getName() : "PG Residence";
+
+            String message = "Your room transfer has been processed successfully. You are now allocated to "
+                    + propertyName + " - Room " + roomNumber + ", Bed " + bedNumber + ".";
+
+            NotificationEvent tenantEvent = NotificationEvent.builder()
+                    .recipient(tenant)
+                    .title("Room Transfer Confirmed: Room " + roomNumber + " (Bed " + bedNumber + ")")
+                    .message(message)
+                    .type(NotificationType.ROOM_TRANSFER)
+                    .actionUrl("/dashboard/my-room")
+                    .sendEmail(false)
+                    .build();
+
+            eventPublisher.publishEvent(tenantEvent);
+        } catch (Exception ex) {
+            log.error("Failed to publish room transfer notification for allocation ID {}: {}", newAllocation.getId(), ex.getMessage());
+        }
+    }
+
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + email));

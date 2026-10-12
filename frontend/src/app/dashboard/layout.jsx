@@ -23,9 +23,11 @@ import {
   BarChart3,
   Calendar,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import NotificationDropdown from "@/components/NotificationDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
+import AIChatbot from "@/components/AIChatbot";
 
 
 export default function DashboardLayout({ children }) {
@@ -302,6 +304,17 @@ export default function DashboardLayout({ children }) {
               />
             </div>
 
+            {/* Antigravity AI Copilot Header Trigger */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("toggle-ai-copilot"))}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 dark:bg-slate-800/90 hover:bg-indigo-100 dark:hover:bg-slate-700/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/60 rounded-full shadow-2xs transition-all cursor-pointer group"
+              title="Open Antigravity AI Copilot (Ctrl+J)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 group-hover:rotate-12 transition-transform" />
+              <span className="hidden sm:inline font-medium">AI Copilot</span>
+            </button>
+
             {/* Theme Toggle Button */}
             <ThemeToggle />
 
@@ -335,6 +348,9 @@ export default function DashboardLayout({ children }) {
 
         {/* Dashboard Body Content */}
         <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-colors">{children}</main>
+
+        {/* Global PG AI Assistant Chatbot */}
+        <AIChatbot />
       </div>
       {/* END: MainContentArea */}
     </div>

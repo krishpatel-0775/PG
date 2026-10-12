@@ -117,6 +117,9 @@ public class SecurityConfig {
                 // Tenant role protected endpoints
                 .requestMatchers("/api/tenant/**").hasRole("TENANT")
                 
+                // AI Assistant endpoints accessible to all authenticated roles
+                .requestMatchers("/api/ai/**").authenticated()
+                
                 // Any other endpoint requires valid authentication
                 .anyRequest().authenticated()
             );

@@ -57,4 +57,15 @@ public interface AllocationService {
      * @return AllocationResponse DTO
      */
     AllocationResponse getActiveAllocationByBedId(Long bedId, String userEmail, boolean isSuperAdmin);
+
+    /**
+     * Transfers an active tenant to a different vacant bed / room, optionally carrying forward deposit and unpaid dues.
+     *
+     * @param allocationId Current active Allocation ID
+     * @param request Transfer bed parameters
+     * @param userEmail Email of the authenticated caller
+     * @param isSuperAdmin True if user has SUPER_ADMIN role
+     * @return AllocationResponse of the newly created active allocation
+     */
+    AllocationResponse transferBed(Long allocationId, com.example.backend.tenantmanagement.dto.request.TransferBedRequest request, String userEmail, boolean isSuperAdmin);
 }

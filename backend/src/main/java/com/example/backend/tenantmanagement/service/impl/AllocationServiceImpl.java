@@ -4,6 +4,7 @@ import com.example.backend.propertymanagement.entity.Bed;
 import com.example.backend.propertymanagement.entity.BedStatus;
 import com.example.backend.propertymanagement.repository.BedRepository;
 import com.example.backend.tenantmanagement.dto.request.CreateAllocationRequest;
+import com.example.backend.tenantmanagement.dto.request.TransferBedRequest;
 import com.example.backend.tenantmanagement.dto.response.AllocationResponse;
 import com.example.backend.tenantmanagement.entity.Allocation;
 import com.example.backend.tenantmanagement.entity.AllocationStatus;
@@ -327,5 +328,126 @@ public class AllocationServiceImpl implements AllocationService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No active allocation found for Bed ID: " + bedId));
 
         return AllocationResponse.fromEntity(allocation);
+    }
+
+    /**
+     * Transfers a resident to a new vacant bed/room atomically.
+     * Completes old allocation, occupies new bed, frees old bed, creates new active allocation,
+     * carries forward security deposit, and optionally re-links pending invoices.
+     */
+    @Override
+    public AllocationResponse transferBed(Long allocationId, TransferBedRequest request, String userEmail, boolean isSuperAdmin) {
+        User caller = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userEmail));
+
+        Allocation oldAllocation = allocationRepository.findById(allocationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Allocation record not found with ID: " + allocationId));
+
+        if (oldAllocation.getStatus() == AllocationStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot transfer a completed allocation.");
+        }
+
+        // Verify authorization for old property
+        if (!isSuperAdmin) {
+            var oldPropertyOwner = oldAllocation.getBed().getRoom().getProperty().getOwner();
+            if (!oldPropertyOwner.getId().equals(caller.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to manage allocations for this property.");
+            }
+        }
+
+        // Validate target bed
+        if (request.getNewBedId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target Bed ID is required.");
+        }
+
+        if (request.getNewBedId().equals(oldAllocation.getBed().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Target bed cannot be the same as the current bed.");
+        }
+
+        Bed newBed = bedRepository.findById(request.getNewBedId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target bed not found with ID: " + request.getNewBedId()));
+
+        if (newBed.getStatus() != BedStatus.VACANT) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Target bed " + newBed.getBedNumber() + " is not vacant. Current status: " + newBed.getStatus());
+        }
+
+        // Verify authorization for new property
+        if (!isSuperAdmin) {
+            var newPropertyOwner = newBed.getRoom().getProperty().getOwner();
+            if (!newPropertyOwner.getId().equals(caller.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have permission to transfer a tenant to this property.");
+            }
+        }
+
+        LocalDate transferDate = request.getTransferDate() != null ? request.getTransferDate() : LocalDate.now();
+
+        // Determine monthly rent: override -> room base rent -> current allocation rent
+        BigDecimal monthlyRent;
+        if (request.getNewMonthlyRent() != null && request.getNewMonthlyRent().compareTo(BigDecimal.ZERO) > 0) {
+            monthlyRent = request.getNewMonthlyRent();
+        } else if (newBed.getRoom() != null && newBed.getRoom().getBaseRent() != null && newBed.getRoom().getBaseRent() > 0) {
+            monthlyRent = BigDecimal.valueOf(newBed.getRoom().getBaseRent());
+        } else {
+            monthlyRent = oldAllocation.getMonthlyRent();
+        }
+
+        // Determine deposit amount
+        BigDecimal depositAmount;
+        if (request.isTransferDeposit()) {
+            depositAmount = oldAllocation.getDepositAmount() != null ? oldAllocation.getDepositAmount() : BigDecimal.ZERO;
+        } else if (request.getNewDepositAmount() != null) {
+            depositAmount = request.getNewDepositAmount();
+        } else {
+            depositAmount = BigDecimal.ZERO;
+        }
+
+        Bed oldBed = oldAllocation.getBed();
+
+        // 1. Mark old allocation as COMPLETED
+        oldAllocation.setStatus(AllocationStatus.COMPLETED);
+        oldAllocation.setCheckOutDate(transferDate);
+        allocationRepository.save(oldAllocation);
+
+        // 2. Free old bed
+        if (oldBed != null) {
+            oldBed.setStatus(BedStatus.VACANT);
+            oldBed.setCurrentTenantId(null);
+            bedRepository.save(oldBed);
+        }
+
+        // 3. Occupy new bed
+        newBed.setStatus(BedStatus.OCCUPIED);
+        newBed.setCurrentTenantId(oldAllocation.getTenant().getId());
+        bedRepository.save(newBed);
+
+        // 4. Create new active allocation
+        Allocation newAllocation = Allocation.builder()
+                .tenant(oldAllocation.getTenant())
+                .bed(newBed)
+                .checkInDate(transferDate)
+                .checkOutDate(null)
+                .depositAmount(depositAmount)
+                .monthlyRent(monthlyRent)
+                .status(AllocationStatus.ACTIVE)
+                .build();
+        Allocation savedNewAllocation = allocationRepository.save(newAllocation);
+
+        // 5. Transfer unpaid and partially paid invoices to the new allocation
+        if (request.isTransferUnpaidInvoices()) {
+            List<Invoice> unpaidInvoices = invoiceRepository.findByAllocationId(oldAllocation.getId()).stream()
+                    .filter(inv -> inv.getStatus() == InvoiceStatus.UNPAID || inv.getStatus() == InvoiceStatus.PARTIALLY_PAID)
+                    .collect(Collectors.toList());
+            for (Invoice invoice : unpaidInvoices) {
+                invoice.setAllocation(savedNewAllocation);
+            }
+            invoiceRepository.saveAll(unpaidInvoices);
+        }
+
+        // 6. Send room transfer notification to resident
+        String oldRoomNumber = (oldBed != null && oldBed.getRoom() != null) ? oldBed.getRoom().getRoomNumber() : "";
+        String oldBedNumber = (oldBed != null) ? oldBed.getBedNumber() : "";
+        notificationService.sendRoomTransferNotification(savedNewAllocation, oldRoomNumber, oldBedNumber);
+
+        return AllocationResponse.fromEntity(savedNewAllocation);
     }
 }

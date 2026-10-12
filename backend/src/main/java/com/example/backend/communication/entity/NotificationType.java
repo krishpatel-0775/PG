@@ -10,5 +10,6 @@ public enum NotificationType {
     RENT_OVERDUE,
     PAYMENT_RECEIPT,
     COMPLAINT_UPDATE,
-    ANNOUNCEMENT
+    ANNOUNCEMENT,
+    ROOM_TRANSFER
 }

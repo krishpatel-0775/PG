@@ -35,4 +35,6 @@ public interface NotificationService {
     void sendRentOverdueNotification(Invoice invoice);
 
     void sendPaymentReceiptNotification(Invoice invoice, Payment payment);
+
+    void sendRoomTransferNotification(com.example.backend.tenantmanagement.entity.Allocation newAllocation, String oldRoomName, String oldBedName);
 }
